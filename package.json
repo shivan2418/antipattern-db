@@ -33,7 +33,8 @@
     "jsontozod": "tsx src/jsontozod.ts",
     "db:build": "tsx src/cli/index.ts build",
     "db:validate": "tsx src/cli/index.ts validate",
-    "db:info": "tsx src/cli/index.ts info"
+    "db:info": "tsx src/cli/index.ts info",
+    "example": "tsx example-artist-query.ts"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [

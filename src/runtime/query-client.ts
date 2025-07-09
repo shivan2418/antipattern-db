@@ -48,9 +48,23 @@ export interface SplitMetadata {
   }>;
 }
 
+// Enum for operators - type-safe and tree-shakeable
+export enum QueryOperator {
+  EQUALS = 'EQUALS',
+  NOT_EQUALS = 'NOT_EQUALS',
+  GREATER_THAN = 'GREATER_THAN',
+  LESS_THAN = 'LESS_THAN',
+  GREATER_THAN_OR_EQUAL = 'GREATER_THAN_OR_EQUAL',
+  LESS_THAN_OR_EQUAL = 'LESS_THAN_OR_EQUAL',
+  IN = 'IN',
+  CONTAINS = 'CONTAINS',
+  STARTS_WITH = 'STARTS_WITH',
+  ENDS_WITH = 'ENDS_WITH',
+}
+
 export interface QueryFilter {
   field: string;
-  operator: '=' | '!=' | '>' | '<' | '>=' | '<=' | 'in' | 'contains' | 'startsWith' | 'endsWith';
+  operator: QueryOperator;
   value: any;
 }
 
@@ -72,6 +86,64 @@ export interface QueryResult<T = DatabaseRecord> {
   executionTime: number;
 }
 
+/**
+ * Field-specific query builder for fluent API
+ */
+export class FieldQueryBuilder<T = DatabaseRecord> {
+  constructor(
+    private field: string,
+    private parentBuilder: QueryBuilder<T>
+  ) {}
+
+  equals(value: any): QueryBuilder<T> {
+    return this.parentBuilder.addFilter(this.field, QueryOperator.EQUALS, value);
+  }
+
+  notEquals(value: any): QueryBuilder<T> {
+    return this.parentBuilder.addFilter(this.field, QueryOperator.NOT_EQUALS, value);
+  }
+
+  greaterThan(value: any): QueryBuilder<T> {
+    return this.parentBuilder.addFilter(this.field, QueryOperator.GREATER_THAN, value);
+  }
+
+  lessThan(value: any): QueryBuilder<T> {
+    return this.parentBuilder.addFilter(this.field, QueryOperator.LESS_THAN, value);
+  }
+
+  greaterThanOrEqual(value: any): QueryBuilder<T> {
+    return this.parentBuilder.addFilter(this.field, QueryOperator.GREATER_THAN_OR_EQUAL, value);
+  }
+
+  lessThanOrEqual(value: any): QueryBuilder<T> {
+    return this.parentBuilder.addFilter(this.field, QueryOperator.LESS_THAN_OR_EQUAL, value);
+  }
+
+  in(values: any[]): QueryBuilder<T> {
+    return this.parentBuilder.addFilter(this.field, QueryOperator.IN, values);
+  }
+
+  contains(value: any): QueryBuilder<T> {
+    return this.parentBuilder.addFilter(this.field, QueryOperator.CONTAINS, value);
+  }
+
+  startsWith(value: string): QueryBuilder<T> {
+    return this.parentBuilder.addFilter(this.field, QueryOperator.STARTS_WITH, value);
+  }
+
+  endsWith(value: string): QueryBuilder<T> {
+    return this.parentBuilder.addFilter(this.field, QueryOperator.ENDS_WITH, value);
+  }
+
+  // Aliases for common operations
+  gt = this.greaterThan;
+  lt = this.lessThan;
+  gte = this.greaterThanOrEqual;
+  lte = this.lessThanOrEqual;
+  eq = this.equals;
+  ne = this.notEquals;
+}
+
 export class QueryBuilder<T = DatabaseRecord> {
   private filters: QueryFilter[] = [];
   private sortOptions: QuerySort[] = [];
@@ -80,16 +152,24 @@ export class QueryBuilder<T = DatabaseRecord> {
 
   constructor(private client: AntipatternDB) {}
 
-  where(field: string, operator: QueryFilter['operator'], value: any): QueryBuilder<T>;
-  where(field: string, value: any): QueryBuilder<T>;
-  where(field: string, operatorOrValue: any, value?: any): QueryBuilder<T> {
-    if (value !== undefined) {
-      // Three-parameter version
-      this.filters.push({ field, operator: operatorOrValue, value });
-    } else {
-      // Two-parameter version (defaults to equality)
-      this.filters.push({ field, operator: '=', value: operatorOrValue });
-    }
+  // Fluent API method
+  where(field: string): FieldQueryBuilder<T> {
+    return new FieldQueryBuilder(field, this);
+  }
+
+  // Legacy method for backward compatibility (with enum)
+  whereRaw(field: string, operator: QueryOperator, value: any): QueryBuilder<T> {
+    return this.addFilter(field, operator, value);
+  }
+
+  // Simple equality method for convenience
+  whereEquals(field: string, value: any): QueryBuilder<T> {
+    return this.addFilter(field, QueryOperator.EQUALS, value);
+  }
+
+  // Internal method to add filters
+  addFilter(field: string, operator: QueryOperator, value: any): QueryBuilder<T> {
+    this.filters.push({ field, operator, value });
     return this;
   }
 
@@ -314,40 +394,40 @@ export class AntipatternDB {
       let matches = false;
 
       switch (filter.operator) {
-        case '=':
+        case QueryOperator.EQUALS:
           matches = entry.value === filter.value;
           break;
-        case '!=':
+        case QueryOperator.NOT_EQUALS:
           matches = entry.value !== filter.value;
           break;
-        case '>':
+        case QueryOperator.GREATER_THAN:
           matches = entry.value > filter.value;
           break;
-        case '<':
+        case QueryOperator.LESS_THAN:
           matches = entry.value < filter.value;
           break;
-        case '>=':
+        case QueryOperator.GREATER_THAN_OR_EQUAL:
           matches = entry.value >= filter.value;
           break;
-        case '<=':
+        case QueryOperator.LESS_THAN_OR_EQUAL:
           matches = entry.value <= filter.value;
           break;
-        case 'in':
+        case QueryOperator.IN:
           matches = Array.isArray(filter.value) && filter.value.includes(entry.value);
           break;
-        case 'contains':
+        case QueryOperator.CONTAINS:
           matches =
             typeof entry.value === 'string' &&
             typeof filter.value === 'string' &&
             entry.value.includes(filter.value);
           break;
-        case 'startsWith':
+        case QueryOperator.STARTS_WITH:
           matches =
             typeof entry.value === 'string' &&
             typeof filter.value === 'string' &&
             entry.value.startsWith(filter.value);
           break;
-        case 'endsWith':
+        case QueryOperator.ENDS_WITH:
           matches =
             typeof entry.value === 'string' &&
             typeof filter.value === 'string' &&
@@ -386,21 +466,21 @@ export class AntipatternDB {
     const value = this.getNestedValue(record, filter.field);
 
     switch (filter.operator) {
-      case '=':
+      case QueryOperator.EQUALS:
         return value === filter.value;
-      case '!=':
+      case QueryOperator.NOT_EQUALS:
         return value !== filter.value;
-      case '>':
+      case QueryOperator.GREATER_THAN:
         return value > filter.value;
-      case '<':
+      case QueryOperator.LESS_THAN:
         return value < filter.value;
-      case '>=':
+      case QueryOperator.GREATER_THAN_OR_EQUAL:
         return value >= filter.value;
-      case '<=':
+      case QueryOperator.LESS_THAN_OR_EQUAL:
         return value <= filter.value;
-      case 'in':
+      case QueryOperator.IN:
         return Array.isArray(filter.value) && filter.value.includes(value);
-      case 'contains':
+      case QueryOperator.CONTAINS:
         if (Array.isArray(value)) {
           return value.includes(filter.value);
         }
@@ -409,13 +489,13 @@ export class AntipatternDB {
           typeof filter.value === 'string' &&
           value.includes(filter.value)
         );
-      case 'startsWith':
+      case QueryOperator.STARTS_WITH:
         return (
           typeof value === 'string' &&
           typeof filter.value === 'string' &&
           value.startsWith(filter.value)
         );
-      case 'endsWith':
+      case QueryOperator.ENDS_WITH:
         return (
           typeof value === 'string' &&
           typeof filter.value === 'string' &&

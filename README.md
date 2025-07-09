@@ -95,13 +95,13 @@ await db.init();
 const user = await db.get('user-123');
 const activeUsers = await db.query().where('status', 'active').exec();
 
-// Advanced queries with multiple filters
+// Advanced queries with multiple filters  
 const results = await db
   .query()
-  .where('age', '>', 25)
-  .where('status', 'active')
-  .where('roles', 'contains', 'admin')
-  .where('profile.preferences.theme', 'dark')
+  .where('age').greaterThan(25)
+  .where('status').equals('active')
+  .where('roles').contains('admin')
+  .where('profile.preferences.theme').equals('dark')
   .sort('name', 'asc')
   .limit(10)
   .offset(20)

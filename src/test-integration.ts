@@ -171,14 +171,14 @@ async function runIntegrationTest() {
     // Step 5: Test basic filtering
     console.log('\n🔍 Step 5: Testing basic filtering...');
 
-    const activeUsers = await db.query().where('status', 'active').exec();
+    const activeUsers = await db.query().where('status').equals('active').exec();
 
     assert(activeUsers.records.length === 3, 'Should find 3 active users');
     assert(activeUsers.totalCount === 3, 'Total count should be 3');
     console.log(`   ✅ Found ${activeUsers.records.length} active users`);
 
     // Test with operator
-    const olderUsers = await db.query().where('age', '>', 30).exec();
+    const olderUsers = await db.query().where('age').greaterThan(30).exec();
 
     assert(
       olderUsers.records.length === 3,
@@ -189,12 +189,12 @@ async function runIntegrationTest() {
     // Step 6: Test array field filtering
     console.log('\n🔍 Step 6: Testing array field filtering...');
 
-    const admins = await db.query().where('roles', 'contains', 'admin').exec();
+    const admins = await db.query().where('roles').contains('admin').exec();
 
     assert(admins.records.length === 2, 'Should find 2 admin users');
     console.log(`   ✅ Found ${admins.records.length} admin users`);
 
-    const developers = await db.query().where('tags', 'contains', 'typescript').exec();
+    const developers = await db.query().where('tags').contains('typescript').exec();
 
     assert(developers.records.length === 1, 'Should find 1 typescript developer');
     console.log(`   ✅ Found ${developers.records.length} typescript developers`);
@@ -202,7 +202,7 @@ async function runIntegrationTest() {
     // Step 7: Test nested field filtering
     console.log('\n🔍 Step 7: Testing nested field filtering...');
 
-    const darkThemeUsers = await db.query().where('profile.preferences.theme', 'dark').exec();
+    const darkThemeUsers = await db.query().where('profile.preferences.theme').equals('dark').exec();
 
     assert(darkThemeUsers.records.length === 2, 'Should find 2 dark theme users');
     console.log(`   ✅ Found ${darkThemeUsers.records.length} dark theme users`);
@@ -212,9 +212,9 @@ async function runIntegrationTest() {
 
     const complexQuery = await db
       .query()
-      .where('status', 'active')
-      .where('age', '>=', 30)
-      .where('roles', 'contains', 'admin')
+      .where('status').equals('active')
+      .where('age').greaterThanOrEqual(30)
+      .where('roles').contains('admin')
       .exec();
 
     assert(complexQuery.records.length === 1, 'Should find 1 active admin user over 30');
@@ -224,7 +224,7 @@ async function runIntegrationTest() {
     // Step 9: Test sorting
     console.log('\n🔍 Step 9: Testing sorting...');
 
-    const sortedByAge = await db.query().where('status', 'active').sort('age', 'desc').exec();
+    const sortedByAge = await db.query().where('status').equals('active').sort('age', 'desc').exec();
 
     assert(sortedByAge.records.length === 3, 'Should have 3 active users');
     assert(sortedByAge.records[0].age === 35, 'First should be oldest');
@@ -251,7 +251,7 @@ async function runIntegrationTest() {
     const start = Date.now();
     const perfResults = await Promise.all([
       db.get('user-1'), // Should use cache
-      db.query().where('status', 'active').exec(), // Should use index
+      db.query().where('status').equals('active').exec(), // Should use index
       db.get('user-2'), // Should use cache
     ]);
     const elapsed = Date.now() - start;
@@ -315,8 +315,8 @@ async function runIntegrationTest() {
     console.log(`   const db = new AntipatternDB('${testOutputDir}');`);
     console.log(`   await db.init();`);
     console.log(`   const users = await db.query()`);
-    console.log(`     .where('status', 'active')`);
-    console.log(`     .where('age', '>', 25)`);
+    console.log(`     .where('status').equals('active')`);
+    console.log(`     .where('age').greaterThan(25)`);
     console.log(`     .sort('name')`);
     console.log(`     .limit(10)`);
     console.log(`     .exec();`);

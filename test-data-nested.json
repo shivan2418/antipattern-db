@@ -1,0 +1,110 @@
+[
+  {
+    "id": "user1",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "age": 30,
+    "address": {
+      "street": "123 Main St",
+      "city": "New York",
+      "country": "USA",
+      "coordinates": {
+        "latitude": 40.7128,
+        "longitude": -74.0060,
+        "elevation": 10
+      }
+    },
+    "preferences": {
+      "theme": "dark",
+      "language": "en",
+      "notifications": {
+        "email": true,
+        "sms": false,
+        "push": true,
+        "frequency": "daily"
+      }
+    },
+    "roles": ["user", "admin"],
+    "metadata": {
+      "created": "2023-01-01T00:00:00Z",
+      "lastLogin": "2023-06-15T14:30:00Z",
+      "session": {
+        "id": "sess_123",
+        "expires": "2023-06-16T14:30:00Z",
+        "device": "chrome"
+      }
+    }
+  },
+  {
+    "id": "user2",
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "age": 25,
+    "address": {
+      "street": "456 Oak Ave",
+      "city": "Los Angeles",
+      "country": "USA",
+      "coordinates": {
+        "latitude": 34.0522,
+        "longitude": -118.2437,
+        "elevation": 71
+      }
+    },
+    "preferences": {
+      "theme": "light",
+      "language": "es",
+      "notifications": {
+        "email": false,
+        "sms": true,
+        "push": false,
+        "frequency": "weekly"
+      }
+    },
+    "roles": ["user"],
+    "metadata": {
+      "created": "2023-02-15T10:30:00Z",
+      "lastLogin": "2023-06-14T09:15:00Z",
+      "session": {
+        "id": "sess_456",
+        "expires": "2023-06-15T09:15:00Z",
+        "device": "firefox"
+      }
+    }
+  },
+  {
+    "id": "user3",
+    "name": "Bob Johnson",
+    "email": "bob@example.com",
+    "age": 35,
+    "address": {
+      "street": "789 Pine Rd",
+      "city": "Chicago",
+      "country": "USA",
+      "coordinates": {
+        "latitude": 41.8781,
+        "longitude": -87.6298,
+        "elevation": 182
+      }
+    },
+    "preferences": {
+      "theme": "auto",
+      "language": "fr",
+      "notifications": {
+        "email": true,
+        "sms": true,
+        "push": true,
+        "frequency": "immediate"
+      }
+    },
+    "roles": ["user", "moderator"],
+    "metadata": {
+      "created": "2023-03-20T16:45:00Z",
+      "lastLogin": "2023-06-16T11:20:00Z",
+      "session": {
+        "id": "sess_789",
+        "expires": "2023-06-17T11:20:00Z",
+        "device": "safari"
+      }
+    }
+  }
+]

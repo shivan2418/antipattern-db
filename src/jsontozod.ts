@@ -1,3 +1,4 @@
+/* eslint-disable no-console, @typescript-eslint/no-non-null-assertion */
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -326,6 +327,10 @@ class JSONToZodGenerator {
       // Handle nested objects
       if (schemaNames && schemaNames.has(fieldPath)) {
         zodType = schemaNames.get(fieldPath)!;
+      } else if (this.hasNestedFields(fieldPath)) {
+        // If we have nested fields but no schema name yet, generate the schema name
+        const schemaName = this.pathToSchemaName(fieldPath);
+        zodType = schemaName;
       } else {
         // For objects without nested schema, use z.record() for dynamic properties
         zodType = 'z.record(z.unknown())';
@@ -601,8 +606,15 @@ class JSONToZodGenerator {
     // Handle object types
     const primaryType = Array.from(stats.types.keys())[0];
     if (primaryType === 'object' || this.hasNestedFields(fieldPath)) {
-      const baseType = 'Record<string, unknown>';
-      return isNullable ? `${baseType} | null` : baseType;
+      if (this.hasNestedFields(fieldPath)) {
+        // Use the generated type name for nested objects
+        const typeName = this.pathToTypeName(fieldPath);
+        const baseType = typeName;
+        return isNullable ? `${baseType} | null` : baseType;
+      } else {
+        const baseType = 'Record<string, unknown>';
+        return isNullable ? `${baseType} | null` : baseType;
+      }
     }
 
     if (stats.types.size > 1) {

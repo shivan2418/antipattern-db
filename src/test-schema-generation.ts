@@ -70,16 +70,19 @@ async function runTests() {
     assert(!schemaContent.includes('Cards[1]Schema'), 'Should not have Cards[1]Schema');
     assert(!schemaContent.includes('Cards[2]Schema'), 'Should not have Cards[2]Schema');
 
-    // Test 2: Check that we have a proper cards array schema
+    // Test 2: Check that we have a proper cards array schema with CardsItemSchema
     console.log('✅ Test 2: Proper cards array schema');
     assert(schemaContent.includes('cards:'), 'Should have cards field');
-    assert(schemaContent.includes('z.array('), 'Cards should be an array schema');
-
-    // Test 3: Check that we have a unified card item schema
-    console.log('✅ Test 3: Unified card item schema');
     assert(
-      schemaContent.includes('CardsItemSchema') || schemaContent.includes('z.array(z.object('),
-      'Should have unified card schema'
+      schemaContent.includes('z.array(CardsItemSchema)'),
+      'Cards should use CardsItemSchema in array'
+    );
+
+    // Test 3: Check that we have a unified CardsItemSchema
+    console.log('✅ Test 3: Unified CardsItemSchema definition');
+    assert(
+      schemaContent.includes('const CardsItemSchema = z.object({'),
+      'Should have CardsItemSchema definition'
     );
 
     // Test 4: Check that required fields are not marked as optional
@@ -94,19 +97,19 @@ async function runTests() {
 
     // Test 6: Check TypeScript types are properly generated
     console.log('✅ Test 6: TypeScript types properly generated');
-    assert(typesContent.includes('cards'), 'Should have cards in types');
     assert(
-      typesContent.includes('Record<string, unknown>[]') || typesContent.includes('CardsItem[]'),
-      'Should have proper array typing'
+      typesContent.includes('cards: CardsItem[]'),
+      'Should have cards: CardsItem[] in GeneratedRecord'
+    );
+    assert(
+      typesContent.includes('export interface CardsItem {'),
+      'Should have CardsItem interface'
     );
 
     // Test 7: Check that nested object fields are properly typed
     console.log('✅ Test 7: Nested objects properly typed');
     assert(schemaContent.includes('colors: z.array(z.string())'), 'Colors should be string array');
-    assert(
-      schemaContent.includes('setType: z.enum(') || schemaContent.includes('setType: z.union('),
-      'SetType should be enum or union'
-    );
+    assert(schemaContent.includes('setType: z.enum(['), 'SetType should be enum');
 
     // Test 8: Check that datetime fields are properly detected
     console.log('✅ Test 8: Datetime fields properly detected');
@@ -115,14 +118,46 @@ async function runTests() {
       'ReleasedAt should be datetime'
     );
 
+    // Test 9: Check enum values are correctly generated
+    console.log('✅ Test 9: Enum values correctly generated');
+    assert(
+      schemaContent.includes("z.enum(['core', 'expansion'])") ||
+        schemaContent.includes('z.enum(["core", "expansion"])'),
+      'SetType enum should include core and expansion values'
+    );
+
+    // Test 10: Check main record schema structure
+    console.log('✅ Test 10: Main record schema structure');
+    assert(
+      schemaContent.includes('export const RecordSchema = z.object({'),
+      'Should have RecordSchema export'
+    );
+    assert(
+      schemaContent.includes('export type Record = z.infer<typeof RecordSchema>'),
+      'Should have Record type export'
+    );
+
+    // Test 11: Check TypeScript interface for nested objects
+    console.log('✅ Test 11: TypeScript interfaces for nested objects');
+    assert(
+      typesContent.includes('export interface GeneratedRecord {'),
+      'Should have GeneratedRecord interface'
+    );
+    assert(
+      typesContent.includes("setType: 'core' | 'expansion';"),
+      'Should have union type for setType'
+    );
+
     console.log('\n🎉 All tests passed! Schema generation is working correctly.\n');
 
     // Show summary of generated structure
     console.log('📋 Generated Schema Summary:');
-    console.log('- Main record schema with proper field types');
-    console.log('- Unified card item schema (not individual schemas per card)');
+    console.log('- Main RecordSchema with proper field types');
+    console.log('- Unified CardsItemSchema for array elements');
     console.log('- Proper optionality detection (only truly optional fields marked)');
     console.log('- Deep introspection of nested objects and arrays');
+    console.log('- Enum generation for fields with limited values');
+    console.log('- Datetime detection for ISO 8601 strings');
     console.log('- Valid JavaScript/TypeScript syntax');
 
     // Show some key parts of the generated schema
@@ -132,14 +167,14 @@ async function runTests() {
       console.log(`  cards: ${cardsMatch[0]}`);
     }
 
-    const idMatch = schemaContent.match(/id: .+/);
-    if (idMatch) {
-      console.log(`  id: ${idMatch[0]}`);
+    const enumMatch = schemaContent.match(/setType: .+/);
+    if (enumMatch) {
+      console.log(`  setType: ${enumMatch[0]}`);
     }
 
-    const nameMatch = schemaContent.match(/name: .+/);
-    if (nameMatch) {
-      console.log(`  name: ${nameMatch[0]}`);
+    const datetimeMatch = schemaContent.match(/releasedAt: .+/);
+    if (datetimeMatch) {
+      console.log(`  releasedAt: ${datetimeMatch[0]}`);
     }
   } catch (error) {
     console.error('❌ Test failed:', error);

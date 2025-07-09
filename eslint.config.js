@@ -81,6 +81,12 @@ export default [
       '*.d.ts',
       'tmp/',
       'temp/',
+      'example.ts',
+      'example-app/',
+      'artist-db/',
+      'db/',
+      'type-safety-demo.ts',
+      '*-demo.ts',
     ],
   },
   {
@@ -90,6 +96,21 @@ export default [
         console: 'readonly',
         process: 'readonly',
       },
+    },
+  },
+  {
+    files: ['src/runtime/browser-*.ts'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        fetch: 'readonly',
+        performance: 'readonly',
+        URL: 'readonly',
+      },
+    },
+    rules: {
+      'no-console': 'off', // Allow console in browser runtime for debugging
+      '@typescript-eslint/no-explicit-any': 'off', // Relax for browser compatibility
     },
   },
 ];

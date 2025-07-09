@@ -33,7 +33,10 @@ interface SimpleRecord {
 
 describe('Type Safety Features', () => {
   // Mock execute function for testing
-  const mockExecute = async (_filters: QueryFilter[], _options?: QueryOptions): Promise<QueryResult<TestUser>> => {
+  const mockExecute = async (
+    _filters: QueryFilter[],
+    _options?: QueryOptions
+  ): Promise<QueryResult<TestUser>> => {
     return {
       records: [],
       totalCount: 0,
@@ -83,11 +86,11 @@ describe('Type Safety Features', () => {
   test('should generate correct field paths type', () => {
     // This tests that our FieldPaths type works correctly
     type UserFieldPaths = FieldPaths<TestUser>;
-    
+
     // These should be valid field paths
     const validPaths: UserFieldPaths[] = [
       'id',
-      'name', 
+      'name',
       'email',
       'age',
       'isActive',
@@ -126,9 +129,12 @@ describe('Type Safety Features', () => {
 
     // Test fluent chaining
     const query = builder
-      .where('age').greaterThan(18)
-      .where('isActive').equals(true)
-      .where('profile.preferences.theme').equals('dark')
+      .where('age')
+      .greaterThan(18)
+      .where('isActive')
+      .equals(true)
+      .where('profile.preferences.theme')
+      .equals('dark')
       .sort('name', 'asc')
       .limit(10)
       .offset(0);
@@ -197,10 +203,10 @@ describe('Compile-time Type Safety (Type-level tests)', () => {
     // Type checking happens at compile time - this is just documentation
     // These would be valid field paths (compile-time checked):
     // 'id', 'name', 'nested', 'nested.value'
-    
+
     // These would cause compile errors:
     // 'nonExistent', 'nested.nonExistent', 'id.invalid'
-    
+
     assert(true, 'Type-level test passed'); // Placeholder assertion
   });
-}); 
+});

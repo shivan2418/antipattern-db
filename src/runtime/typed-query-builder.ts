@@ -1,8 +1,14 @@
-import { QueryOperator, QueryResult, QueryFilter, QuerySort, QueryOptions } from './query-client.js';
+import {
+  QueryOperator,
+  QueryResult,
+  QueryFilter,
+  QuerySort,
+  QueryOptions,
+} from './query-client.js';
 
 // Simpler approach to nested field paths to avoid excessive stack depth
 // We'll support up to 3 levels of nesting which covers most common use cases
-export type FieldPaths<T> = 
+export type FieldPaths<T> =
   | keyof T
   | {
       [K in keyof T]: T[K] extends Record<string, unknown>
@@ -29,22 +35,22 @@ export type FieldPaths<T> =
 export type PathValue<T, P extends string> = P extends keyof T
   ? T[P]
   : P extends `${infer K}.${infer Rest}`
-  ? K extends keyof T
-    ? T[K] extends Record<string, unknown>
-      ? Rest extends keyof T[K]
-        ? T[K][Rest]
-        : Rest extends `${infer K2}.${infer Rest2}`
-        ? K2 extends keyof T[K]
-          ? T[K][K2] extends Record<string, unknown>
-            ? Rest2 extends keyof T[K][K2]
-              ? T[K][K2][Rest2]
+    ? K extends keyof T
+      ? T[K] extends Record<string, unknown>
+        ? Rest extends keyof T[K]
+          ? T[K][Rest]
+          : Rest extends `${infer K2}.${infer Rest2}`
+            ? K2 extends keyof T[K]
+              ? T[K][K2] extends Record<string, unknown>
+                ? Rest2 extends keyof T[K][K2]
+                  ? T[K][K2][Rest2]
+                  : unknown
+                : unknown
               : unknown
             : unknown
-          : unknown
         : unknown
       : unknown
-    : unknown
-  : unknown;
+    : unknown;
 
 /**
  * Type-safe field query builder that constrains field names to valid paths
@@ -113,7 +119,12 @@ export class TypeSafeQueryBuilder<T> {
   private limitValue?: number;
   private offsetValue?: number;
 
-  constructor(private executeQuery: (filters: QueryFilter[], options?: QueryOptions) => Promise<QueryResult<T>>) {}
+  constructor(
+    private executeQuery: (
+      filters: QueryFilter[],
+      options?: QueryOptions
+    ) => Promise<QueryResult<T>>
+  ) {}
 
   // Type-safe where method that only allows valid field paths
   where<F extends FieldPaths<T> & string>(field: F): TypeSafeFieldQueryBuilder<T, F> {
@@ -126,7 +137,10 @@ export class TypeSafeQueryBuilder<T> {
   }
 
   // Simple equality method for convenience
-  whereEquals<F extends FieldPaths<T> & string>(field: F, value: PathValue<T, F>): TypeSafeQueryBuilder<T> {
+  whereEquals<F extends FieldPaths<T> & string>(
+    field: F,
+    value: PathValue<T, F>
+  ): TypeSafeQueryBuilder<T> {
     return this.addFilter(field, QueryOperator.EQUALS, value);
   }
 
@@ -136,7 +150,10 @@ export class TypeSafeQueryBuilder<T> {
     return this;
   }
 
-  sort<F extends FieldPaths<T> & string>(field: F, direction: 'asc' | 'desc' = 'asc'): TypeSafeQueryBuilder<T> {
+  sort<F extends FieldPaths<T> & string>(
+    field: F,
+    direction: 'asc' | 'desc' = 'asc'
+  ): TypeSafeQueryBuilder<T> {
     this.sortOptions.push({ field, direction });
     return this;
   }
@@ -158,4 +175,4 @@ export class TypeSafeQueryBuilder<T> {
       sort: this.sortOptions,
     });
   }
-} 
+}

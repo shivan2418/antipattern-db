@@ -11,19 +11,31 @@ export { default as JSONToZodGenerator } from './jsontozod.js';
 export { AntipatternDB, QueryBuilder, QueryOperator } from './runtime/query-client.js';
 export { TypedDatabaseClient } from './runtime/typed-client.js';
 export { TypeSafeQueryBuilder, FieldPaths } from './runtime/typed-query-builder.js';
-export type { 
-  QueryResult, 
-  QueryFilter, 
-  QuerySort, 
+
+// Browser-compatible runtime
+export {
+  BrowserAntipatternDB,
+  BrowserQueryBuilder,
+  BrowserFieldQuery,
+  QueryOperator as BrowserQueryOperator,
+} from './runtime/browser-client.js';
+export {
+  BrowserTypedDatabaseClient,
+  createBrowserTypedClient,
+} from './runtime/browser-typed-client.js';
+export type {
+  QueryResult,
+  QueryFilter,
+  QuerySort,
   QueryOptions,
-  DatabaseRecord 
+  DatabaseRecord,
 } from './runtime/query-client.js';
 
 // Core types
-export type { 
+export type {
   DatabaseIndex,
   DatabaseMetadata,
   BuilderConfig,
   BuilderResult,
-  CLIOptions
+  CLIOptions,
 } from './types/index.js';

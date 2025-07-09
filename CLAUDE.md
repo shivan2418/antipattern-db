@@ -3,6 +3,7 @@
 - use pnpm
 - use inbuilt node test framework.
 - after modifying existing code, check if thaht feature is mentioned in the readme.md and if you need to update the existing documentation.
+- the package is made for browser usage.
 
 Perfect! Now I have a clear understanding of your vision. Let me create a comprehensive plan for building this static file database library.
 

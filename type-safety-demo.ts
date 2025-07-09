@@ -3,14 +3,14 @@ import { QueryOperator } from './src/runtime/query-client.js';
 
 /**
  * Type Safety Demonstration
- * 
+ *
  * This script demonstrates the compile-time type safety features.
  * Try uncommenting the commented lines to see TypeScript errors!
  */
 
 async function demonstrateTypeSafety() {
   console.log('🔒 Type Safety Demonstration\n');
-  
+
   try {
     // Initialize the database
     console.log('📡 Connecting to type-safe database...');
@@ -19,16 +19,16 @@ async function demonstrateTypeSafety() {
 
     // ✅ VALID QUERIES - These work because field names exist
     console.log('✅ VALID QUERIES:');
-    
+
     console.log('1. Querying artists with high card counts...');
     const prolificArtists = await db
       .query()
-      .where('cardCount')          // ✅ 'cardCount' exists in GeneratedRecord
+      .where('cardCount') // ✅ 'cardCount' exists in GeneratedRecord
       .greaterThan(50)
-      .sort('cardCount', 'desc')   // ✅ Sort field is also type-checked
+      .sort('cardCount', 'desc') // ✅ Sort field is also type-checked
       .limit(3)
       .exec();
-    
+
     console.log(`   Found ${prolificArtists.totalCount} artists with >50 cards`);
     prolificArtists.records.forEach((artist, i) => {
       console.log(`   ${i + 1}. ${artist.name} - ${artist.cardCount} cards`);
@@ -38,11 +38,11 @@ async function demonstrateTypeSafety() {
     console.log('2. Searching by name pattern...');
     const johnArtists = await db
       .query()
-      .where('name')               // ✅ 'name' exists
+      .where('name') // ✅ 'name' exists
       .contains('John')
       .sort('name', 'asc')
       .exec();
-    
+
     console.log(`   Found ${johnArtists.totalCount} artists with 'John' in name`);
     johnArtists.records.slice(0, 3).forEach(artist => {
       console.log(`   • ${artist.name} (${artist.cardCount} cards)`);
@@ -52,12 +52,12 @@ async function demonstrateTypeSafety() {
     console.log('3. Nested field access for card data...');
     const modernArtists = await db
       .query()
-      .where('oldestCardDate')     // ✅ Top-level field
+      .where('oldestCardDate') // ✅ Top-level field
       .greaterThan('2010-01-01T00:00:00.000Z')
       .sort('cardCount', 'desc')
       .limit(3)
       .exec();
-    
+
     console.log(`   Found ${modernArtists.totalCount} artists who started after 2010`);
     modernArtists.records.forEach(artist => {
       const year = new Date(artist.oldestCardDate).getFullYear();
@@ -94,32 +94,36 @@ async function demonstrateTypeSafety() {
     console.log('   ✅ Typos caught before runtime');
     console.log('   ✅ Refactoring safety');
     console.log('   ✅ Self-documenting code');
-    
+
     // Type information at compile time
     type AvailableFields = ValidFieldNames;
     console.log('\n📚 All valid field paths are defined in the ValidFieldNames type alias.');
-
   } catch (error) {
     console.error('❌ Error:', error);
     console.log('\n💡 Make sure the database exists. Build it with:');
-    console.log('   pnpm run db:build data/artists-deduplicated.json -o ./artist-db --primary-key name');
+    console.log(
+      '   pnpm run db:build data/artists-deduplicated.json -o ./artist-db --primary-key name'
+    );
   }
 }
 
 // Additional examples for different scenarios
 async function advancedTypeSafetyExamples() {
   console.log('\n🚀 Advanced Type Safety Examples:\n');
-  
+
   await db.init();
 
   // Example: Fluent chaining with multiple constraints
   console.log('1. Complex multi-condition query:');
   const complexQuery = await db
     .query()
-    .where('cardCount').greaterThan(10)      // ✅ Number comparison
-    .where('cardCount').lessThan(100)        // ✅ Chained conditions
-    .where('oldestCardDate').greaterThan('2000-01-01T00:00:00.000Z')  // ✅ String comparison
-    .sort('cardCount', 'desc')               // ✅ Type-safe sorting  
+    .where('cardCount')
+    .greaterThan(10) // ✅ Number comparison
+    .where('cardCount')
+    .lessThan(100) // ✅ Chained conditions
+    .where('oldestCardDate')
+    .greaterThan('2000-01-01T00:00:00.000Z') // ✅ String comparison
+    .sort('cardCount', 'desc') // ✅ Type-safe sorting
     .limit(5)
     .exec();
 
@@ -138,10 +142,10 @@ async function advancedTypeSafetyExamples() {
   console.log('3. Legacy methods (for backward compatibility):');
   const legacyQuery = await db
     .query()
-    .whereEquals('cardCount', 50)                               // ✅ Still type-safe
-    .whereRaw('name', QueryOperator.CONTAINS, 'Smith')          // ✅ Raw method available
+    .whereEquals('cardCount', 50) // ✅ Still type-safe
+    .whereRaw('name', QueryOperator.CONTAINS, 'Smith') // ✅ Raw method available
     .exec();
-  
+
   console.log(`   Legacy query found ${legacyQuery.totalCount} results`);
 }
 
@@ -152,4 +156,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     .catch(console.error);
 }
 
-export { demonstrateTypeSafety, advancedTypeSafetyExamples }; 
+export { demonstrateTypeSafety, advancedTypeSafetyExamples };

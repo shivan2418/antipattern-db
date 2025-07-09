@@ -46,25 +46,80 @@ pnpm install
 ### Command Line Interface
 
 ```bash
-# Run directly with tsx (recommended)
-npx tsx jsontozod.ts <input.json> [output-dir]
+# Build a complete queryable database from JSON
+pnpm run db:build <input.json> [options]
 
-# Using npm script
-pnpm run jsontozod <input.json> [output-dir]
-
-# Or compile and run with Node.js
-npx tsc jsontozod.ts
-node jsontozod.js <input.json> [output-dir]
+# Using npx directly
+npx antipattern-db build <input.json> [options]
 
 # Examples
-npx tsx jsontozod.ts data/users.json ./generated
-pnpm run jsontozod data/products.json ./schemas
+pnpm run db:build data/users.json -o ./database
+npx antipattern-db build data/products.json --output ./db --batch-size 50
+pnpm run db:build data/large-dataset.json -o ./static-db --index-fields id,status,category
+
+# Validate and inspect database
+pnpm run db:validate ./database
+pnpm run db:info ./database
+```
+
+### Available CLI Commands
+
+- `build` - Build complete database from JSON file
+- `validate` - Validate database structure and consistency
+- `info` - Show database information and statistics
+- `generate` - Legacy alias for build command
+
+### CLI Options
+
+- `-o, --output <dir>` - Output directory (default: './db')
+- `-p, --primary-key <field>` - Primary key field (default: 'id')
+- `-b, --batch-size <size>` - Records per file (default: 1)
+- `-i, --index-fields <fields>` - Comma-separated fields to index
+- `--max-index-values <count>` - Skip indexing fields with too many values
+- `--sample-size <size>` - Records to analyze for schema (default: 1000)
+- `--enum-threshold <count>` - Max unique values for enums (default: 20)
+- `--optional-threshold <ratio>` - Threshold for optional fields (default: 0.5)
+- `--no-subdirectories` - Disable subdirectory organization
+- `-q, --quiet` - Suppress verbose output
+
+### Runtime Query Client
+
+```typescript
+import { AntipatternDB } from 'antipattern-db';
+
+// Initialize database client
+const db = new AntipatternDB('./database');
+await db.init();
+
+// Simple queries
+const user = await db.get('user-123');
+const activeUsers = await db.query().where('status', 'active').exec();
+
+// Advanced queries with multiple filters
+const results = await db
+  .query()
+  .where('age', '>', 25)
+  .where('status', 'active')
+  .where('roles', 'contains', 'admin')
+  .where('profile.preferences.theme', 'dark')
+  .sort('name', 'asc')
+  .limit(10)
+  .offset(20)
+  .exec();
+
+console.log(`Found ${results.totalCount} matching records`);
+console.log(`Query executed in ${results.executionTime}ms`);
+
+// Utility methods
+const totalUsers = await db.count();
+const fields = await db.getFields();
+const indexedFields = await db.getIndexedFields();
 ```
 
 ### Database Builder Usage
 
 ```typescript
-import { AntipatternBuilder } from './src/builder/index.js';
+import { AntipatternBuilder } from 'antipattern-db';
 
 const builder = new AntipatternBuilder({
   outputDir: './static-db',
@@ -430,7 +485,8 @@ pnpm run test
 
 # Run specific test suites
 pnpm run test:nested      # Schema generation tests
-npx tsx src/builder/test-builder.test.ts  # Builder integration tests
+pnpm run test:builder     # Builder component tests
+pnpm run test:integration # Full end-to-end integration test
 ```
 
 ### Test Coverage
@@ -439,8 +495,14 @@ npx tsx src/builder/test-builder.test.ts  # Builder integration tests
 - ✅ Data splitting (individual and batch modes)
 - ✅ Index generation for primitive, array, and nested fields
 - ✅ Complex nested object handling
-- ✅ Array field indexing
+- ✅ Array field indexing with contains operator
+- ✅ Nested object field querying
+- ✅ Runtime query client with caching
+- ✅ Individual record retrieval
+- ✅ Multi-filter queries with operators (=, !=, >, <, >=, <=, in, contains)
+- ✅ Sorting and pagination
 - ✅ Database validation and consistency checking
+- ✅ Performance optimization and execution timing
 - ✅ Metadata generation and integrity
 - ✅ File structure validation
 - ✅ Real-world dataset processing (1,866 records)

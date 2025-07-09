@@ -57,7 +57,7 @@ export class DataSplitter {
   /**
    * Split a collection of records into individual or batched files
    */
-  async splitRecords(records: any[]): Promise<SplitResult> {
+  splitRecords(records: any[]): SplitResult {
     console.log(`📂 Splitting ${records.length} records into files...`);
 
     const dataDir = path.join(this.options.outputDir, 'data');
@@ -72,7 +72,7 @@ export class DataSplitter {
 
     if (this.options.batchSize && this.options.batchSize > 1) {
       // Batch mode: multiple records per file
-      const result = await this.splitIntoBatches(records, dataDir, primaryKeyField);
+      const result = this.splitIntoBatches(records, dataDir, primaryKeyField);
       result.files.forEach(file => {
         file.recordIds.forEach(recordId => {
           recordMap.set(recordId, file.filename);
@@ -86,7 +86,7 @@ export class DataSplitter {
         const record = records[i];
         const recordId = record[primaryKeyField] || i.toString();
 
-        const { filename, size } = await this.writeRecordFile(record, recordId, dataDir, i);
+        const { filename, size } = this.writeRecordFile(record, recordId, dataDir, i);
         recordMap.set(recordId, filename);
 
         fileMetadata.push({
@@ -139,11 +139,11 @@ export class DataSplitter {
   /**
    * Split records into batch files
    */
-  private async splitIntoBatches(
+  private splitIntoBatches(
     records: any[],
     dataDir: string,
     primaryKeyField: string
-  ): Promise<{ files: FileMetadata[] }> {
+  ): { files: FileMetadata[] } {
     const batchSize = this.options.batchSize!;
     const files: FileMetadata[] = [];
 
@@ -193,12 +193,12 @@ export class DataSplitter {
   /**
    * Write a single record to file
    */
-  private async writeRecordFile(
+  private writeRecordFile(
     record: any,
     recordId: string,
     dataDir: string,
     index: number
-  ): Promise<{ filename: string; size: number }> {
+  ): { filename: string; size: number } {
     const filename = this.generateFilename(recordId, index);
     const subdirectory = this.options.useSubdirectories ? this.getSubdirectory(index) : undefined;
 

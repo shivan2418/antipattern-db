@@ -97,7 +97,7 @@ export class AntipatternBuilder {
       useSubdirectories: this.options.useSubdirectories,
     });
 
-    const splitResult = await splitter.splitRecords(records);
+    const splitResult = splitter.splitRecords(records);
 
     // Step 4: Generate indexes
     const indexGenerator = new IndexGenerator({

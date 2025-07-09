@@ -34,15 +34,33 @@ export class ClientGenerator {
     return `// Auto-generated database client
 // This file provides a pre-configured, type-safe database client
 
-import { createTypedClient } from '../src/runtime/typed-client.js';
+import { TypedDatabaseClient } from '../src/runtime/typed-client.js';
+import { FieldPaths } from '../src/runtime/typed-query-builder.js';
 import { RecordSchema } from './schema.js';
 import type { GeneratedRecord } from './types.js';
 
 /**
- * Pre-configured, type-safe database client
- * Usage: import { db } from './database';
+ * Pre-configured, type-safe database client with field name constraints
+ * 
+ * Features:
+ * - Field names are constrained to actual record properties
+ * - Nested field access (e.g., 'profile.age') is supported up to 3 levels
+ * - Compile-time error if you try to query non-existent fields
+ * 
+ * Usage:
+ *   import { db } from './database';
+ *   await db.init();
+ *   
+ *   // ✅ Type-safe - only allows valid field names
+ *   const results = await db.query()
+ *     .where('status').equals('active')  // 'status' must exist in GeneratedRecord
+ *     .where('profile.age').greaterThan(25)  // nested fields supported
+ *     .exec();
+ *   
+ *   // ❌ Compile error - field doesn't exist
+ *   // const results = await db.query().where('nonExistentField').equals('value');
  */
-export const db = createTypedClient<GeneratedRecord, typeof RecordSchema>(
+export const db = new TypedDatabaseClient<GeneratedRecord, typeof RecordSchema>(
   import.meta.dirname || '.',
   RecordSchema
 );
@@ -51,6 +69,11 @@ export const db = createTypedClient<GeneratedRecord, typeof RecordSchema>(
 export type { GeneratedRecord } from './types.js';
 export { RecordSchema } from './schema.js';
 export { TypedDatabaseClient } from '../src/runtime/typed-client.js';
+export { TypeSafeQueryBuilder } from '../src/runtime/typed-query-builder.js';
+
+// Type aliases for better developer experience
+export type ValidFieldNames = FieldPaths<GeneratedRecord>;
+export type DatabaseClient = typeof db;
 `;
   }
 

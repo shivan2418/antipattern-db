@@ -41,7 +41,6 @@ program
         batchSize: parseInt(options.batchSize),
         indexFields,
         maxIndexValues: parseInt(options.maxIndexValues),
-        sampleSize: parseInt(options.sampleSize),
         enumThreshold: parseInt(options.enumThreshold),
         optionalThreshold: parseFloat(options.optionalThreshold),
         useSubdirectories: !options.noSubdirectories,

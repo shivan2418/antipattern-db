@@ -1,23 +1,29 @@
-// Builder exports
+// Main exports for the antipattern-db library
+
+// Builder functionality
 export { AntipatternBuilder } from './builder/index.js';
 export type { BuilderOptions, BuildResult } from './builder/index.js';
 
-// Runtime exports
-export { AntipatternDB, QueryBuilder } from './runtime/query-client.js';
-export { TypedDatabaseClient, createTypedClient } from './runtime/typed-client.js';
-export type {
-  DatabaseRecord,
-  DatabaseIndex,
-  DatabaseMetadata,
-  SplitMetadata,
-  QueryFilter,
-  QuerySort,
-  QueryOptions,
-  QueryResult,
-} from './runtime/query-client.js';
-
-// Schema generator exports
+// Schema generation
 export { default as JSONToZodGenerator } from './jsontozod.js';
 
-// Type exports
-export type * from './types/index.js';
+// Runtime query functionality
+export { AntipatternDB, QueryBuilder, QueryOperator } from './runtime/query-client.js';
+export { TypedDatabaseClient } from './runtime/typed-client.js';
+export { TypeSafeQueryBuilder, FieldPaths } from './runtime/typed-query-builder.js';
+export type { 
+  QueryResult, 
+  QueryFilter, 
+  QuerySort, 
+  QueryOptions,
+  DatabaseRecord 
+} from './runtime/query-client.js';
+
+// Core types
+export type { 
+  DatabaseIndex,
+  DatabaseMetadata,
+  BuilderConfig,
+  BuilderResult,
+  CLIOptions
+} from './types/index.js';

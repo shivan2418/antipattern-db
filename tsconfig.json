@@ -15,6 +15,6 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src/**/*", "example-*.ts", "tests/**/*"],
-  "exclude": ["node_modules", "dist", "db"]
+  "include": ["src/**/*", "example-*.ts", "type-safety-demo.ts", "*-demo.ts", "tests/**/*"],
+  "exclude": ["node_modules", "dist", "db", "artist-db"]
 }

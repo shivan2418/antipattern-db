@@ -11,13 +11,20 @@
 /* eslint-disable no-undef */
 
 import { AntipatternDB } from './src/runtime/query-client.js';
-import { RecordSchema } from './generated-test/schema.js';
-import type { GeneratedRecord, CardsItem } from './generated-test/types.js';
 
-// Type alias for better readability
-type Artist = GeneratedRecord;
-type Card = CardsItem;
-type SchemaRecord = import('./generated-test/schema.js').Record;
+// Example of record type (would be generated)
+interface Artist {
+  id: string;
+  name: string;
+  cardCount: number;
+  oldestCardDate: string;
+  cards: string[];
+  profile?: {
+    bio: string;
+    website: string;
+    verified: boolean;
+  };
+}
 
 async function main() {
   console.log('🎨 Magic: The Gathering Artist Database Example\n');
@@ -29,6 +36,12 @@ async function main() {
   try {
     // Step 2: Initialize the database client
     console.log('🔌 Connecting to artist database...');
+    
+    // For demonstration, we'll use the regular client since we don't have generated types here
+    // In a real scenario, you'd import the generated type-safe client:
+    // import { db } from './artist-db';
+    // await db.init();
+    
     const db = new AntipatternDB('./artist-db');
     await db.init();
 
@@ -44,7 +57,28 @@ async function main() {
     console.log(`   Available Fields: ${fields.join(', ')}`);
     console.log(`   Indexed Fields: ${indexedFields.join(', ')}\n`);
 
-    // Step 4: Query examples
+    // Step 4: Query examples with type safety demonstration
+
+    console.log('🔒 Type Safety Demonstration:');
+    console.log('When using the generated type-safe client, these would be the differences:\n');
+
+    console.log('✅ TYPE-SAFE VERSION (with generated client):');
+    console.log(`   import { db } from './artist-db';
+   
+   // ✅ These work - field names are validated at compile time:
+   const results = await db.query()
+     .where('cardCount').greaterThan(50)     // ✅ 'cardCount' exists
+     .where('name').contains('John')         // ✅ 'name' exists  
+     .where('profile.verified').equals(true) // ✅ nested fields work
+     .exec();
+   
+   // ❌ These would cause TypeScript compile errors:
+   // .where('nonExistentField').equals('value')  // ❌ Compile error!
+   // .where('cardCont').greaterThan(50)          // ❌ Typo caught at compile time!
+   // .where('profile.age').equals(30)            // ❌ 'age' doesn't exist in profile!
+`);
+
+    console.log('\n📊 Current Example (using regular client for demo):');
 
     // Example 1: Find prolific artists (those with many cards)
     console.log('🎯 Finding prolific artists (>50 cards):');
@@ -72,204 +106,48 @@ async function main() {
       .exec();
 
     console.log(`Found ${johnArtists.totalCount} artists:`);
-    johnArtists.records.slice(0, 3).forEach(artist => {
+    johnArtists.records.slice(0, 5).forEach((artist: Artist) => {
       console.log(`   • ${artist.name} (${artist.cardCount} cards)`);
     });
     console.log();
 
-    // Example 3: Find veteran artists (oldest card before 2000)
-    console.log('👴 Finding veteran artists (oldest card before 2000):');
-    const veteranArtists = await db
+    // Example 3: Complex multi-field query
+    console.log('⚡ Complex query - Artists with 15-100 cards from after 2000:');
+    const modernProlificArtists = await db
       .query<Artist>()
+      .where('cardCount')
+      .greaterThan(15)
+      .where('cardCount')
+      .lessThan(100)
       .where('oldestCardDate')
-      .lessThan('2000-01-01T00:00:00.000Z')
-      .sort('oldestCardDate', 'asc')
-      .limit(5)
+      .greaterThan('2000-01-01T00:00:00.000Z')
+      .sort('cardCount', 'desc')
+      .limit(10)
       .exec();
 
-    console.log(`Found ${veteranArtists.totalCount} veteran artists:`);
-    veteranArtists.records.forEach(artist => {
+    console.log(`Found ${modernProlificArtists.totalCount} matching artists:`);
+    modernProlificArtists.records.forEach((artist: Artist, index: number) => {
       const oldestDate = new Date(artist.oldestCardDate).getFullYear();
-      console.log(`   • ${artist.name} - First card: ${oldestDate}`);
+      console.log(`   ${index + 1}. ${artist.name} - ${artist.cardCount} cards (oldest: ${oldestDate})`);
     });
     console.log();
 
-    // Example 4: Get a specific artist by searching
-    console.log('👤 Getting details for a specific artist:');
-    const searchResult = await db
-      .query<Artist>()
-      .where('cardCount')
-      .greaterThan(30)
-      .limit(1)
-      .exec();
+    console.log('🎉 Query Performance:');
+    console.log(`   Last query returned ${modernProlificArtists.records.length} results in ${modernProlificArtists.executionTime}ms`);
 
-    if (searchResult.records.length > 0) {
-      const artist = searchResult.records[0];
-      console.log(`   Artist: ${artist.name}`);
-      console.log(`   Total Cards: ${artist.cardCount}`);
-      console.log(`   First Card: ${new Date(artist.oldestCardDate).getFullYear()}`);
+    console.log('\n🔥 Benefits of Type-Safe Version:');
+    console.log('   ✅ Compile-time field validation');
+    console.log('   ✅ IntelliSense autocomplete for field names');
+    console.log('   ✅ Catches typos before runtime');
+    console.log('   ✅ Supports nested field access (profile.verified)');
+    console.log('   ✅ Value type checking based on field types');
+    console.log('   ✅ Prevents queries on non-existent fields');
 
-      // Show some card examples
-      console.log(`   Sample Cards:`);
-      artist.cards.slice(0, 3).forEach(card => {
-        console.log(
-          `     - ${card.name} (${card.set}) - ${new Date(card.releasedAt).getFullYear()}`
-        );
-      });
-    }
-    console.log();
-
-    // Example 5: Complex query with multiple filters
-    console.log('🔍 Complex query - Modern prolific artists:');
-    const modernProlific = await db
-      .query<Artist>()
-      .where('cardCount')
-      .greaterThan(20)
-      .where('oldestCardDate')
-      .greaterThan('2010-01-01T00:00:00.000Z')
-      .sort('cardCount', 'desc')
-      .limit(3)
-      .exec();
-
-    console.log(`Artists with 20+ cards who started after 2010:`);
-    modernProlific.records.forEach(artist => {
-      const startYear = new Date(artist.oldestCardDate).getFullYear();
-      console.log(`   • ${artist.name} - ${artist.cardCount} cards (since ${startYear})`);
-    });
-    console.log();
-
-    // Example 6: Query performance timing
-    console.log('⚡ Query Performance:');
-    const start = Date.now();
-    const performanceTest = await db
-      .query<Artist>()
-      .where('cardCount')
-      .greaterThanOrEqual(10)
-      .sort('name', 'asc')
-      .limit(100)
-      .exec();
-    const queryTime = Date.now() - start;
-
-    console.log(`   Query returned ${performanceTest.records.length} results in ${queryTime}ms`);
-    console.log(`   Database execution time: ${performanceTest.executionTime}ms\n`);
-
-    // Example 7: Pagination example
-    console.log('📄 Pagination example - browsing artists:');
-    const pageSize = 5;
-    const firstPage = await db
-      .query<Artist>()
-      .sort('cardCount', 'desc')
-      .limit(pageSize)
-      .offset(0)
-      .exec();
-
-    const secondPage = await db
-      .query<Artist>()
-      .sort('cardCount', 'desc')
-      .limit(pageSize)
-      .offset(pageSize)
-      .exec();
-
-    console.log('   Page 1 (Top artists by card count):');
-    firstPage.records.forEach((artist, index) => {
-      console.log(`     ${index + 1}. ${artist.name} - ${artist.cardCount} cards`);
-    });
-
-    console.log('   Page 2:');
-    secondPage.records.forEach((artist, index) => {
-      console.log(`     ${index + 6}. ${artist.name} - ${artist.cardCount} cards`);
-    });
-
-    console.log(`\n   Total pages available: ${Math.ceil(firstPage.totalCount / pageSize)}`);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('Database directory not found')) {
-      console.log('❌ Database not found!');
-      console.log('\n🔧 To create the database, run:');
-      console.log('   pnpm run db:build data/artists-with-cards.json -o ./artist-db');
-      console.log('\n   This will:');
-      console.log('   • Generate Zod schemas and TypeScript types');
-      console.log('   • Split the large JSON into optimized files');
-      console.log('   • Create indexes for fast querying');
-      console.log('   • Set up metadata for the query engine');
-    } else {
-      console.error('❌ Error:', error instanceof Error ? error.message : error);
-    }
+    console.error('❌ Error:', error);
+    console.log('\n💡 Make sure to build the database first:');
+    console.log('   pnpm run db:build data/artists-with-cards.json -o ./artist-db');
   }
 }
 
-// Additional helper functions for working with the artist data
-
-/**
- * Helper function to analyze an artist's card distribution by set type
- */
-function analyzeArtistCardDistribution(artist: Artist): void {
-  const setTypeCounts: Record<string, number> = {};
-
-  artist.cards.forEach(card => {
-    setTypeCounts[card.setType] = (setTypeCounts[card.setType] || 0) + 1;
-  });
-
-  console.log(`\n📊 ${artist.name}'s Card Distribution:`);
-  Object.entries(setTypeCounts)
-    .sort(([, a], [, b]) => (b as number) - (a as number))
-    .forEach(([setType, count]) => {
-      console.log(`   ${setType}: ${count} cards`);
-    });
-}
-
-/**
- * Helper function to find cards with specific characteristics
- */
-async function findSpecialCards(db: AntipatternDB): Promise<void> {
-  console.log('✨ Looking for special characteristics in the data...\n');
-
-  // This would require querying individual card data if cards were indexed separately
-  // For now, we'll demonstrate with artist-level queries
-
-  const fullArtArtists = await db
-    .query<Artist>()
-    .where('cardCount')
-    .greaterThan(5) // Artists with multiple cards
-    .exec();
-
-  console.log(`Analyzed ${fullArtArtists.records.length} artists for special card characteristics`);
-
-  // Analyze a sample artist's cards
-  if (fullArtArtists.records.length > 0) {
-    const sampleArtist = fullArtArtists.records[0];
-    const fullArtCards = sampleArtist.cards.filter(card => card.fullArt);
-    const borderlessCards = sampleArtist.cards.filter(card => card.borderColor === 'borderless');
-
-    console.log(`   ${sampleArtist.name} has:`);
-    console.log(`   • ${fullArtCards.length} full-art cards`);
-    console.log(`   • ${borderlessCards.length} borderless cards`);
-  }
-}
-
-/**
- * Validation example using the generated Zod schema
- */
-function validateArtistData(artistData: unknown): SchemaRecord | null {
-  try {
-    const validatedArtist = RecordSchema.parse(artistData);
-    console.log(`✅ Artist data is valid: ${validatedArtist.name}`);
-    return validatedArtist;
-  } catch (error) {
-    console.error('❌ Invalid artist data:', error);
-    return null;
-  }
-}
-
-// Run the example
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(console.error);
-}
-
-export {
-  main,
-  analyzeArtistCardDistribution,
-  findSpecialCards,
-  validateArtistData,
-  type Artist,
-  type Card,
-};
+main().catch(console.error);

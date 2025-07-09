@@ -4,6 +4,14 @@ A powerful TypeScript library that converts large JSON files into a queryable, s
 
 ## Features
 
+### 🔒 **True Type Safety**
+
+- **Field name validation at compile time** - No more typos in queries!
+- **IntelliSense autocomplete** for all available field names
+- **Nested field support** (e.g., `'profile.preferences.theme'`) up to 3 levels deep
+- **Value type checking** based on your actual data structure
+- **Compile-time errors** for non-existent fields prevent runtime issues
+
 ### 🔍 **Schema Introspection**
 
 - Smart analysis of JSON structure and automatic Zod schema generation
@@ -91,25 +99,30 @@ import { db } from './database';
 // Initialize database client (pre-configured with types)
 await db.init();
 
-// Simple queries with full type safety
+// ✅ TYPE-SAFE QUERIES - Field names are validated at compile time!
 const user = await db.get('user-123');
 const activeUsers = await db.query().where('status').equals('active').exec();
 
-// Advanced queries with multiple filters (fully typed)
+// ✅ Advanced type-safe queries with multiple filters
 const results = await db
   .query()
-  .where('age')
+  .where('age')                      // ✅ Only allows fields that exist in your data
   .greaterThan(25)
-  .where('status')
+  .where('status')                   // ✅ IntelliSense autocomplete for field names
   .equals('active')
-  .where('roles')
+  .where('roles')                    // ✅ Array field support
   .contains('admin')
-  .where('profile.preferences.theme')
+  .where('profile.preferences.theme') // ✅ Nested field access (up to 3 levels)
   .equals('dark')
-  .sort('name', 'asc')
+  .sort('name', 'asc')               // ✅ Sort field names are also type-checked
   .limit(10)
   .offset(20)
   .exec();
+
+// ❌ These would cause TypeScript compile errors:
+// .where('nonExistentField').equals('value')  // Compile error!
+// .where('statu').equals('active')            // Typo caught at compile time!
+// .where('profile.nonExistent').equals('x')   // Invalid nested field error!
 
 console.log(`Found ${results.totalCount} matching records`);
 console.log(`Query executed in ${results.executionTime}ms`);
@@ -119,6 +132,48 @@ const totalUsers = await db.count();
 const fields = await db.getFields();
 const indexedFields = await db.getIndexedFields();
 ```
+
+### Type Safety Benefits
+
+The generated database client provides **true compile-time type safety**:
+
+#### ✅ Valid Queries (These work!)
+
+```typescript
+// Field names are constrained to actual record properties
+await db.query().where('id').equals('user-123').exec();
+await db.query().where('email').contains('@gmail.com').exec();
+await db.query().where('profile.age').greaterThan(18).exec();
+await db.query().where('tags').contains('premium').exec();
+
+// IntelliSense provides autocomplete for all available fields
+await db.query().where('status').in(['active', 'pending']).exec();
+await db.query().sort('createdAt', 'desc').limit(10).exec();
+```
+
+#### ❌ Invalid Queries (Compile-time errors!)
+
+```typescript
+// ❌ TypeScript Error: Argument of type '"nonExistentField"' is not assignable...
+await db.query().where('nonExistentField').equals('value').exec();
+
+// ❌ TypeScript Error: Typo in field name
+await db.query().where('emai').contains('@gmail.com').exec();
+
+// ❌ TypeScript Error: Invalid nested field
+await db.query().where('profile.invalidField').equals('value').exec();
+
+// ❌ TypeScript Error: Wrong sort field
+await db.query().sort('nonExistentField', 'asc').exec();
+```
+
+#### 🎯 Developer Experience Benefits
+
+- **Catch errors at build time**, not runtime
+- **IntelliSense autocomplete** shows you exactly what fields are available
+- **Refactoring safety** - rename a field in your data and TypeScript will show you everywhere it's used
+- **Documentation** - the types serve as living documentation of your data structure
+- **Confidence** - know that your queries are valid before deploying
 
 ### Database Builder Usage
 

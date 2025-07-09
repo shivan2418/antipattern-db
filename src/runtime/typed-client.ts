@@ -1,11 +1,12 @@
 import { AntipatternDB, QueryBuilder } from './query-client.js';
+import { TypeSafeQueryBuilder } from './typed-query-builder.js';
 import { z } from 'zod';
 
 /**
  * Type-safe database client that wraps AntipatternDB with specific record types
  */
 export class TypedDatabaseClient<
-  TRecord extends Record<string, any>,
+  TRecord extends Record<string, unknown>,
   TSchema extends z.ZodSchema = z.ZodSchema,
 > {
   private client: AntipatternDB;
@@ -37,9 +38,21 @@ export class TypedDatabaseClient<
   }
 
   /**
-   * Create a type-safe query
+   * Create a type-safe query that constrains field names to valid record keys
    */
-  query(): QueryBuilder<TRecord> {
+  query(): TypeSafeQueryBuilder<TRecord> {
+    this.ensureInitialized();
+    // Create a type-safe query builder that uses the client's executeQuery method
+    return new TypeSafeQueryBuilder<TRecord>((filters, options) => 
+      this.client._executeQuery<TRecord>(filters, options)
+    );
+  }
+
+  /**
+   * Create a legacy query builder for backward compatibility
+   * @deprecated Use query() for type safety
+   */
+  queryLegacy(): QueryBuilder<TRecord> {
     this.ensureInitialized();
     return this.client.query<TRecord>();
   }
@@ -121,7 +134,7 @@ export class TypedDatabaseClient<
  * Factory function to create a typed client with specific types
  */
 export function createTypedClient<
-  TRecord extends Record<string, any>,
+  TRecord extends Record<string, unknown>,
   TSchema extends z.ZodSchema = z.ZodSchema,
 >(databasePath: string, schema?: TSchema): TypedDatabaseClient<TRecord, TSchema> {
   return new TypedDatabaseClient<TRecord, TSchema>(databasePath, schema);

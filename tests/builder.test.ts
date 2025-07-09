@@ -283,6 +283,7 @@ describe('Builder Tests', () => {
       outputDir: testBatchDir,
       primaryKeyField: 'id',
       batchSize: 2, // 2 records per file
+      useSubdirectories: false, // Disable subdirectories for simpler testing
       verbose: false,
     });
 
@@ -295,8 +296,9 @@ describe('Builder Tests', () => {
     assert.strictEqual(batchFiles.length, 2, 'Should have 2 batch files');
 
     // Verify first batch has 2 records, second has 1
-    const batch1 = JSON.parse(fs.readFileSync(path.join(dataDir, '0.json'), 'utf8'));
-    const batch2 = JSON.parse(fs.readFileSync(path.join(dataDir, '1.json'), 'utf8'));
+    // Files are named batch_0000.json, batch_0001.json, etc.
+    const batch1 = JSON.parse(fs.readFileSync(path.join(dataDir, 'batch_0000.json'), 'utf8'));
+    const batch2 = JSON.parse(fs.readFileSync(path.join(dataDir, 'batch_0001.json'), 'utf8'));
 
     assert.strictEqual(batch1.length, 2, 'First batch should have 2 records');
     assert.strictEqual(batch2.length, 1, 'Second batch should have 1 record');

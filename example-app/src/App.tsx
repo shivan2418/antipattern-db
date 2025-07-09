@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { db } from './artist-db/client.js';
-import type { GeneratedRecord } from './artist-db/types.js';
+import { db } from './artist-db/client';
+import type { GeneratedRecord } from './artist-db/types';
 import './App.css';
 
 function App() {
@@ -12,13 +12,11 @@ function App() {
   useEffect(() => {
     const loadArtists = async () => {
       try {
-        // Query the first 10 artists for demo
-        const result = await db.query()
-          .limit(10)
-          .exec();
-        
-        setArtists(result.records);
-        setFilteredArtists(result.records);
+        // Get the first 10 artists for demo
+        const records = await db.getAllRecords(10);
+
+        setArtists(records || []);
+        setFilteredArtists(records || []);
         setLoading(false);
       } catch (error) {
         console.error('Error loading artists:', error);
@@ -31,7 +29,7 @@ function App() {
 
   useEffect(() => {
     if (searchTerm) {
-      const filtered = artists.filter(artist => 
+      const filtered = artists.filter(artist =>
         artist.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredArtists(filtered);
@@ -49,19 +47,19 @@ function App() {
       <header className="App-header">
         <h1>Antipattern-DB Demo</h1>
         <p>Exploring Magic: The Gathering artist database</p>
-        
+
         <div className="search-container">
           <input
             type="text"
             placeholder="Search artists..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
             className="search-input"
           />
         </div>
 
         <div className="artists-grid">
-          {filteredArtists.map((artist) => (
+          {filteredArtists.map(artist => (
             <div key={artist.id} className="artist-card">
               <h3>{artist.name}</h3>
               <p>Cards: {artist.cardCount}</p>
@@ -70,7 +68,7 @@ function App() {
                 <div className="sample-cards">
                   <h4>Sample cards:</h4>
                   <ul>
-                    {artist.cards.slice(0, 3).map((card) => (
+                    {artist.cards.slice(0, 3).map(card => (
                       <li key={card.id}>
                         {card.name} ({card.set.toUpperCase()})
                       </li>

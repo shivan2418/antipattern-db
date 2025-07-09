@@ -5,3 +5,4 @@ generated-test
 db
 artist-db
 example-app/node_modules
+.idea

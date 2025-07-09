@@ -14,6 +14,7 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "browser": "dist/browser.js",
   "bin": {
     "antipattern-db": "dist/cli/index.js"
   },

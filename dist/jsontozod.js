@@ -2,13 +2,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 class JSONToZodGenerator {
-    sampleSize;
     enumThreshold;
     optionalThreshold;
     fieldStats;
     totalRecords;
     constructor(options = {}) {
-        this.sampleSize = options.sampleSize || 1000;
         this.enumThreshold = options.enumThreshold || 20; // If field has ≤20 unique values, make it enum
         this.optionalThreshold = options.optionalThreshold || 0.5; // If field present in <50% of records, make optional
         this.fieldStats = new Map();
@@ -20,10 +18,9 @@ class JSONToZodGenerator {
         const data = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
         const records = this.extractRecords(data);
         console.log(`📊 Found ${records.length} records`);
-        // Analyze sample
-        const sample = records.slice(0, Math.min(this.sampleSize, records.length));
+        // Analyze all records (no sampling)
         this.totalRecords = records.length;
-        sample.forEach(record => {
+        records.forEach(record => {
             this.analyzeRecord(record, '');
         });
         // Generate schemas
@@ -540,9 +537,12 @@ class JSONToZodGenerator {
     }
     generateIndexFile() {
         return `// Auto-generated exports
-export { RecordSchema } from './schema';
-export type { Record } from './schema';
-export type { GeneratedRecord } from './types';
+export { RecordSchema } from './schema.js';
+export type { Record } from './schema.js';
+export type { GeneratedRecord } from './types.js';
+
+// Export the pre-configured, type-safe database client
+export { db, TypedDatabaseClient } from './client.js';
 `;
     }
     getFieldStats() {

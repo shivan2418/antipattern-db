@@ -2,7 +2,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import JSONToZodGenerator from './jsontozod';
+import JSONToZodGenerator from '../src/jsontozod';
 
 describe('Nested Types Generation', () => {
   const testOutputDir = './test-output-nested';
@@ -200,45 +200,20 @@ describe('Nested Types Generation', () => {
     const generator = new JSONToZodGenerator();
     await generator.generateFromFile('test-data-nested.json', testOutputDir);
 
-    // Read the test data
-    const testData = JSON.parse(fs.readFileSync('test-data-nested.json', 'utf8'));
+    // Import and test the generated schema
+    const { RecordSchema } = await import(path.resolve(testOutputDir, 'schema.js'));
+    const testDataJson = fs.readFileSync('test-data-nested.json', 'utf8');
+    const testData = JSON.parse(testDataJson);
 
-    // Import the generated schema (we'll verify it can parse successfully)
-    const schemaContent = fs.readFileSync(path.join(testOutputDir, 'schema.ts'), 'utf8');
-
-    // Verify the schema content is valid TypeScript/Zod syntax
-    assert.ok(schemaContent.includes("import { z } from 'zod'"), 'should import zod');
-    assert.ok(schemaContent.includes('export const RecordSchema'), 'should export RecordSchema');
-    assert.ok(schemaContent.includes('export type Record'), 'should export Record type');
-
-    // Verify each test record would have the expected structure
-    testData.forEach((record: any, index: number) => {
-      assert.ok(typeof record.id === 'string', `Record ${index} should have string id`);
-      assert.ok(typeof record.name === 'string', `Record ${index} should have string name`);
-      assert.ok(typeof record.email === 'string', `Record ${index} should have string email`);
-      assert.ok(typeof record.age === 'number', `Record ${index} should have number age`);
-      assert.ok(typeof record.address === 'object', `Record ${index} should have object address`);
-      assert.ok(
-        typeof record.preferences === 'object',
-        `Record ${index} should have object preferences`
-      );
-      assert.ok(Array.isArray(record.roles), `Record ${index} should have array roles`);
-      assert.ok(typeof record.metadata === 'object', `Record ${index} should have object metadata`);
-
-      // Verify nested structure
-      assert.ok(
-        typeof record.address.coordinates === 'object',
-        `Record ${index} should have nested coordinates`
-      );
-      assert.ok(
-        typeof record.preferences.notifications === 'object',
-        `Record ${index} should have nested notifications`
-      );
-      assert.ok(
-        typeof record.metadata.session === 'object',
-        `Record ${index} should have nested session`
-      );
-    });
+    // Test validation against the actual data
+    for (const record of testData) {
+      try {
+        const validatedRecord = RecordSchema.parse(record);
+        assert.ok(validatedRecord, 'Record should validate successfully');
+      } catch (error) {
+        assert.fail(`Record validation failed: ${error}`);
+      }
+    }
 
     // Clean up test output
     fs.rmSync(testOutputDir, { recursive: true, force: true });

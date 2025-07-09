@@ -9,7 +9,6 @@ export interface BuilderOptions {
   outputDir: string;
 
   // Schema generation options
-  sampleSize?: number;
   enumThreshold?: number;
   optionalThreshold?: number;
 
@@ -47,7 +46,6 @@ export class AntipatternBuilder {
 
   constructor(options: BuilderOptions) {
     this.options = {
-      sampleSize: 1000,
       enumThreshold: 20,
       optionalThreshold: 0.5,
       maxIndexValues: 10000,
@@ -85,7 +83,6 @@ export class AntipatternBuilder {
 
     // Step 2: Generate schemas
     const schemaGenerator = new JSONToZodGenerator({
-      sampleSize: this.options.sampleSize,
       enumThreshold: this.options.enumThreshold,
       optionalThreshold: this.options.optionalThreshold,
     });
@@ -335,7 +332,6 @@ export class AntipatternBuilder {
       buildTime,
       inputFile: path.basename(inputPath),
       options: {
-        sampleSize: this.options.sampleSize,
         enumThreshold: this.options.enumThreshold,
         optionalThreshold: this.options.optionalThreshold,
         maxIndexValues: this.options.maxIndexValues,

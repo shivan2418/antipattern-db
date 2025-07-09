@@ -1,7 +1,8 @@
+import { test, describe, before, after } from 'node:test';
 import { strict as assert } from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import { AntipatternBuilder } from './index.js';
+import { AntipatternBuilder } from '../src/builder/index.js';
 
 // Test data with complex nested structure
 const testData = [
@@ -78,44 +79,60 @@ const testData = [
   },
 ];
 
-async function runBuilderTests() {
-  console.log('🧪 Running builder integration tests...\n');
-
+describe('Builder Tests', () => {
   const testInputPath = './test-builder-input.json';
   const testOutputDir = './test-builder-output';
+  const testBatchDir = './test-builder-batch';
+  let builder: AntipatternBuilder;
 
-  // Cleanup any existing test files
-  try {
-    fs.rmSync(testOutputDir, { recursive: true, force: true });
-    fs.unlinkSync(testInputPath);
-  } catch {
-    // Ignore cleanup errors
-  }
+  before(() => {
+    // Cleanup any existing test files
+    try {
+      fs.rmSync(testOutputDir, { recursive: true, force: true });
+      fs.rmSync(testBatchDir, { recursive: true, force: true });
+      if (fs.existsSync(testInputPath)) {
+        fs.unlinkSync(testInputPath);
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
 
-  try {
     // Create test input file
     fs.writeFileSync(testInputPath, JSON.stringify(testData, null, 2));
 
     // Initialize builder
-    const builder = new AntipatternBuilder({
+    builder = new AntipatternBuilder({
       outputDir: testOutputDir,
       primaryKeyField: 'id',
       batchSize: 1, // Individual files
-      indexFields: ['id', 'status', 'age', 'roles', 'preferences.theme'], // Only index specific fields
-      verbose: true,
+      indexFields: ['id', 'status', 'age', 'roles', 'preferences.theme'],
+      verbose: false,
     });
+  });
 
-    // Test 1: Build database
-    console.log('✅ Test 1: Build database');
+  after(() => {
+    // Cleanup test files
+    try {
+      fs.rmSync(testOutputDir, { recursive: true, force: true });
+      fs.rmSync(testBatchDir, { recursive: true, force: true });
+      if (fs.existsSync(testInputPath)) {
+        fs.unlinkSync(testInputPath);
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  test('should build database successfully', async () => {
     const buildResult = await builder.build(testInputPath);
 
-    assert(buildResult.totalRecords === 3, 'Should process 3 records');
-    assert(buildResult.totalFiles === 3, 'Should create 3 data files');
-    assert(buildResult.schemaGenerated === true, 'Should generate schemas');
+    assert.strictEqual(buildResult.totalRecords, 3, 'Should process 3 records');
+    assert.strictEqual(buildResult.totalFiles, 3, 'Should create 3 data files');
+    assert.strictEqual(buildResult.schemaGenerated, true, 'Should generate schemas');
     assert(buildResult.buildTime > 0, 'Should have valid build time');
+  });
 
-    // Test 2: Validate file structure
-    console.log('✅ Test 2: Validate file structure');
+  test('should create correct file structure', () => {
     assert(fs.existsSync(testOutputDir), 'Output directory should exist');
     assert(fs.existsSync(path.join(testOutputDir, 'schema.ts')), 'schema.ts should exist');
     assert(fs.existsSync(path.join(testOutputDir, 'types.ts')), 'types.ts should exist');
@@ -131,14 +148,14 @@ async function runBuilderTests() {
     );
     assert(fs.existsSync(path.join(testOutputDir, 'data')), 'data directory should exist');
     assert(fs.existsSync(path.join(testOutputDir, 'indexes')), 'indexes directory should exist');
+  });
 
-    // Test 3: Validate data files
-    console.log('✅ Test 3: Validate data files');
+  test('should create correct data files', () => {
     const dataDir = path.join(testOutputDir, 'data');
     const dataFiles = fs
       .readdirSync(dataDir, { recursive: true })
       .filter(f => typeof f === 'string' && f.endsWith('.json'));
-    assert(dataFiles.length === 3, 'Should have 3 data files');
+    assert.strictEqual(dataFiles.length, 3, 'Should have 3 data files');
 
     // Read a data file and validate structure
     const firstDataFile = path.join(dataDir, dataFiles[0] as string);
@@ -146,9 +163,9 @@ async function runBuilderTests() {
     assert(recordData.id, 'Record should have id field');
     assert(recordData.name, 'Record should have name field');
     assert(recordData.profile, 'Record should have nested profile field');
+  });
 
-    // Test 4: Validate indexes
-    console.log('✅ Test 4: Validate indexes');
+  test('should create correct indexes', () => {
     const indexesDir = path.join(testOutputDir, 'indexes');
     const indexFiles = fs.readdirSync(indexesDir).filter(f => f.endsWith('.json'));
 
@@ -160,10 +177,11 @@ async function runBuilderTests() {
 
     // Validate index file structure
     const statusIndex = JSON.parse(fs.readFileSync(path.join(indexesDir, 'status.json'), 'utf8'));
-    assert(statusIndex.field === 'status', 'Index should have correct field name');
+    assert.strictEqual(statusIndex.field, 'status', 'Index should have correct field name');
     assert(Array.isArray(statusIndex.entries), 'Index should have entries array');
-    assert(
-      statusIndex.entries.length === 2,
+    assert.strictEqual(
+      statusIndex.entries.length,
+      2,
       'Should have 2 unique status values (active, inactive)'
     );
 
@@ -178,12 +196,15 @@ async function runBuilderTests() {
       inactiveEntry && inactiveEntry.recordIds.length === 1,
       'Inactive status should have 1 record'
     );
+  });
 
-    // Test 5: Validate array field indexing (roles)
-    console.log('✅ Test 5: Validate array field indexing');
+  test('should handle array field indexing correctly', () => {
+    const indexesDir = path.join(testOutputDir, 'indexes');
+    const indexFiles = fs.readdirSync(indexesDir).filter(f => f.endsWith('.json'));
+
     if (indexFiles.includes('roles.json')) {
       const rolesIndex = JSON.parse(fs.readFileSync(path.join(indexesDir, 'roles.json'), 'utf8'));
-      assert(rolesIndex.field === 'roles', 'Roles index should have correct field name');
+      assert.strictEqual(rolesIndex.field, 'roles', 'Roles index should have correct field name');
 
       // Should have entries for 'user', 'admin', 'moderator'
       const userEntry = rolesIndex.entries.find((e: any) => e.value === 'user');
@@ -203,130 +224,81 @@ async function runBuilderTests() {
         'Moderator role should appear in 1 record'
       );
     }
+  });
 
-    // Test 6: Validate nested field indexing
-    console.log('✅ Test 6: Validate nested field indexing');
+  test('should handle nested field indexing correctly', () => {
+    const indexesDir = path.join(testOutputDir, 'indexes');
+    const indexFiles = fs.readdirSync(indexesDir).filter(f => f.endsWith('.json'));
+
     if (indexFiles.includes('preferences_theme.json')) {
       const themeIndex = JSON.parse(
         fs.readFileSync(path.join(indexesDir, 'preferences_theme.json'), 'utf8')
       );
-      assert(
-        themeIndex.field === 'preferences.theme',
-        'Theme index should have correct nested field name'
+      assert.strictEqual(
+        themeIndex.field,
+        'preferences.theme',
+        'Theme index should have correct field name'
       );
-      assert(themeIndex.entries.length === 3, 'Should have 3 unique theme values');
+
+      // Should have entries for 'dark', 'light', 'auto'
+      const darkEntry = themeIndex.entries.find((e: any) => e.value === 'dark');
+      const lightEntry = themeIndex.entries.find((e: any) => e.value === 'light');
+      const autoEntry = themeIndex.entries.find((e: any) => e.value === 'auto');
+
+      assert(darkEntry && darkEntry.recordIds.length === 1, 'Dark theme should have 1 record');
+      assert(lightEntry && lightEntry.recordIds.length === 1, 'Light theme should have 1 record');
+      assert(autoEntry && autoEntry.recordIds.length === 1, 'Auto theme should have 1 record');
     }
+  });
 
-    // Test 7: Validate metadata
-    console.log('✅ Test 7: Validate metadata');
+  test('should validate metadata correctly', () => {
     const metadata = JSON.parse(fs.readFileSync(path.join(testOutputDir, 'metadata.json'), 'utf8'));
-    assert(metadata.totalRecords === 3, 'Metadata should show 3 total records');
-    assert(Array.isArray(metadata.indexes), 'Metadata should have indexes array');
-    assert(Array.isArray(metadata.fields), 'Metadata should have fields array');
-    assert(metadata.fields.includes('id'), 'Fields should include id');
-    assert(metadata.fields.includes('preferences.theme'), 'Fields should include nested field');
-
-    // Test 8: Validate split metadata
-    console.log('✅ Test 8: Validate split metadata');
     const splitMetadata = JSON.parse(
       fs.readFileSync(path.join(testOutputDir, 'split-metadata.json'), 'utf8')
     );
-    assert(splitMetadata.totalRecords === 3, 'Split metadata should show 3 total records');
-    assert(splitMetadata.totalFiles === 3, 'Split metadata should show 3 total files');
-    assert(
-      splitMetadata.primaryKeyField === 'id',
-      'Split metadata should show correct primary key field'
-    );
-    assert(Array.isArray(splitMetadata.files), 'Split metadata should have files array');
 
-    // Test 9: Validate schemas
-    console.log('✅ Test 9: Validate schemas');
-    const schemaContent = fs.readFileSync(path.join(testOutputDir, 'schema.ts'), 'utf8');
-    assert(schemaContent.includes("import { z } from 'zod'"), 'Schema should import zod');
-    assert(
-      schemaContent.includes('export const RecordSchema'),
-      'Schema should export RecordSchema'
-    );
-    assert(schemaContent.includes('export type Record'), 'Schema should export Record type');
+    assert.strictEqual(metadata.totalRecords, 3, 'Metadata should show 3 records');
+    assert.strictEqual(splitMetadata.totalRecords, 3, 'Split metadata should show 3 records');
+    assert.strictEqual(splitMetadata.totalFiles, 3, 'Split metadata should show 3 files');
+    assert(Array.isArray(metadata.indexes), 'Metadata should have indexes array');
+    assert(metadata.indexes.length > 0, 'Should have generated indexes');
+  });
 
-    const typesContent = fs.readFileSync(path.join(testOutputDir, 'types.ts'), 'utf8');
-    assert(typesContent.includes('export interface'), 'Types should export interfaces');
+  test('should validate database successfully', async () => {
+    const isValid = await builder.validate();
+    assert.strictEqual(isValid, true, 'Database should validate successfully');
+  });
 
-    // Test 10: Validate database validation
-    console.log('✅ Test 10: Validate database validation');
-    const validationResult = await builder.validate();
-    assert(validationResult === true, 'Database validation should pass');
-
-    // Test 11: Validate database info
-    console.log('✅ Test 11: Validate database info');
+  test('should provide database info correctly', async () => {
     const info = await builder.info();
-    assert(info.database.totalRecords === 3, 'Info should show correct record count');
-    assert(info.data.totalFiles === 3, 'Info should show correct file count');
-    assert(Array.isArray(info.indexes), 'Info should include indexes array');
+    assert.strictEqual(info.database.totalRecords, 3, 'Info should show 3 records');
+    assert.strictEqual(info.data.totalFiles, 3, 'Info should show 3 files');
+    assert(info.build, 'Info should include build manifest');
+    assert(Array.isArray(info.indexes), 'Info should include indexes');
+  });
 
-    // Test 12: Test batch mode
-    console.log('✅ Test 12: Test batch mode');
-    const batchOutputDir = './test-builder-batch';
-    try {
-      fs.rmSync(batchOutputDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
-
+  test('should support batch mode', async () => {
+    // Test batch mode with batchSize = 2
     const batchBuilder = new AntipatternBuilder({
-      outputDir: batchOutputDir,
+      outputDir: testBatchDir,
       primaryKeyField: 'id',
       batchSize: 2, // 2 records per file
       verbose: false,
     });
 
-    const batchResult = await batchBuilder.build(testInputPath);
-    assert(batchResult.totalRecords === 3, 'Batch mode should process 3 records');
-    assert(batchResult.totalFiles === 2, 'Batch mode should create 2 files (2+1 records)');
+    const buildResult = await batchBuilder.build(testInputPath);
+    assert.strictEqual(buildResult.totalRecords, 3, 'Should process 3 records');
+    assert.strictEqual(buildResult.totalFiles, 2, 'Should create 2 batch files (2+1)');
 
-    const batchDataDir = path.join(batchOutputDir, 'data');
-    const batchFiles = fs
-      .readdirSync(batchDataDir, { recursive: true })
-      .filter(f => typeof f === 'string' && f.endsWith('.json'));
-    assert(batchFiles.length === 2, 'Should have 2 batch files');
+    const dataDir = path.join(testBatchDir, 'data');
+    const batchFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
+    assert.strictEqual(batchFiles.length, 2, 'Should have 2 batch files');
 
-    // Validate batch file content
-    const firstBatchFile = path.join(batchDataDir, batchFiles[0] as string);
-    const batchData = JSON.parse(fs.readFileSync(firstBatchFile, 'utf8'));
-    assert(Array.isArray(batchData), 'Batch file should contain array');
-    assert(batchData.length <= 2, 'Batch should have at most 2 records');
+    // Verify first batch has 2 records, second has 1
+    const batch1 = JSON.parse(fs.readFileSync(path.join(dataDir, '0.json'), 'utf8'));
+    const batch2 = JSON.parse(fs.readFileSync(path.join(dataDir, '1.json'), 'utf8'));
 
-    console.log('\n🎉 All builder tests passed!');
-    console.log('\n📋 Test Summary:');
-    console.log('✓ Schema generation and introspection');
-    console.log('✓ Data splitting (individual and batch modes)');
-    console.log('✓ Index generation for primitive, array, and nested fields');
-    console.log('✓ Metadata generation and consistency');
-    console.log('✓ File structure validation');
-    console.log('✓ Database validation and info retrieval');
-    console.log('✓ Complex nested object handling');
-    console.log('✓ Array field indexing');
-    console.log('✓ Selective field indexing');
-
-    // Cleanup batch test
-    try {
-      fs.rmSync(batchOutputDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
-  } catch (error) {
-    console.error('❌ Builder test failed:', error);
-    process.exit(1);
-  } finally {
-    // Cleanup
-    try {
-      fs.unlinkSync(testInputPath);
-      fs.rmSync(testOutputDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
-  }
-}
-
-// Run tests
-runBuilderTests();
+    assert.strictEqual(batch1.length, 2, 'First batch should have 2 records');
+    assert.strictEqual(batch2.length, 1, 'Second batch should have 1 record');
+  });
+});

@@ -20,10 +20,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "npx tsx --test src/**/*.test.ts",
-    "test:nested": "npx tsx --test src/test-nested-types.test.ts",
-    "test:integration": "npx tsx src/test-integration.ts",
-    "test:builder": "npx tsx src/builder/test-builder.test.ts",
+    "test": "npx tsx --test tests/*.test.ts",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "format": "prettier --write .",

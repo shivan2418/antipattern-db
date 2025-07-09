@@ -3,7 +3,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 interface GeneratorOptions {
-  sampleSize?: number;
   enumThreshold?: number;
   optionalThreshold?: number;
 }
@@ -34,14 +33,12 @@ interface GenerationResult {
 }
 
 class JSONToZodGenerator {
-  private sampleSize: number;
   private enumThreshold: number;
   private optionalThreshold: number;
   private fieldStats: Map<string, FieldStats>;
   private totalRecords: number;
 
   constructor(options: GeneratorOptions = {}) {
-    this.sampleSize = options.sampleSize || 1000;
     this.enumThreshold = options.enumThreshold || 20; // If field has ≤20 unique values, make it enum
     this.optionalThreshold = options.optionalThreshold || 0.5; // If field present in <50% of records, make optional
     this.fieldStats = new Map();
@@ -60,11 +57,10 @@ class JSONToZodGenerator {
 
     console.log(`📊 Found ${records.length} records`);
 
-    // Analyze sample
-    const sample = records.slice(0, Math.min(this.sampleSize, records.length));
+    // Analyze all records (no sampling)
     this.totalRecords = records.length;
 
-    sample.forEach(record => {
+    records.forEach(record => {
       this.analyzeRecord(record, '');
     });
 

@@ -65,6 +65,8 @@ export default [
       'dist/',
       'node_modules/',
       'coverage/',
+      'generated/',
+      'generated-test/',
       '*.config.js',
       '*.config.ts',
       'build/',

@@ -1,8 +1,45 @@
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
+
+interface GeneratorOptions {
+  sampleSize?: number;
+  enumThreshold?: number;
+  optionalThreshold?: number;
+}
+
+interface FieldStats {
+  count: number;
+  nullCount: number;
+  types: Map<string, number>;
+  uniqueValues: Set<any>;
+  samples: any[];
+  isArray: boolean;
+  arrayElementTypes: Set<string>;
+  nestedFields: Map<string, any>;
+}
+
+interface GenerationResult {
+  schema: string;
+  types: string;
+  stats: Record<
+    string,
+    {
+      coverage: number;
+      types: string[];
+      uniqueValues: number;
+      samples: any[];
+    }
+  >;
+}
 
 class JSONToZodGenerator {
-  constructor(options = {}) {
+  private sampleSize: number;
+  private enumThreshold: number;
+  private optionalThreshold: number;
+  private fieldStats: Map<string, FieldStats>;
+  private totalRecords: number;
+
+  constructor(options: GeneratorOptions = {}) {
     this.sampleSize = options.sampleSize || 1000;
     this.enumThreshold = options.enumThreshold || 20; // If field has ≤20 unique values, make it enum
     this.optionalThreshold = options.optionalThreshold || 0.9; // If field present in <90% of records, make optional
@@ -10,7 +47,10 @@ class JSONToZodGenerator {
     this.totalRecords = 0;
   }
 
-  async generateFromFile(inputPath, outputDir = './generated') {
+  async generateFromFile(
+    inputPath: string,
+    outputDir: string = './generated'
+  ): Promise<GenerationResult> {
     console.log(`🔍 Analyzing ${inputPath}...`);
 
     // Read and analyze JSON
@@ -52,7 +92,7 @@ class JSONToZodGenerator {
     };
   }
 
-  extractRecords(data) {
+  extractRecords(data: any): any[] {
     if (Array.isArray(data)) {
       return data;
     } else if (typeof data === 'object' && data !== null) {
@@ -70,7 +110,7 @@ class JSONToZodGenerator {
     return [];
   }
 
-  analyzeRecord(record, prefix) {
+  analyzeRecord(record: any, prefix: string): void {
     if (typeof record !== 'object' || record === null) return;
 
     Object.keys(record).forEach(key => {
@@ -90,7 +130,7 @@ class JSONToZodGenerator {
         });
       }
 
-      const stats = this.fieldStats.get(fieldPath);
+      const stats = this.fieldStats.get(fieldPath)!;
       stats.count++;
 
       if (value === null || value === undefined) {
@@ -128,7 +168,7 @@ class JSONToZodGenerator {
     });
   }
 
-  getDetailedType(value) {
+  getDetailedType(value: any): string {
     if (value === null) return 'null';
     if (Array.isArray(value)) return 'array';
     if (value instanceof Date) return 'date';
@@ -151,34 +191,34 @@ class JSONToZodGenerator {
     return typeof value;
   }
 
-  isISO8601Date(str) {
+  isISO8601Date(str: string): boolean {
     return (
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/.test(str) ||
       /^\d{4}-\d{2}-\d{2}$/.test(str)
     );
   }
 
-  isEmail(str) {
+  isEmail(str: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str);
   }
 
-  isUrl(str) {
+  isUrl(str: string): boolean {
     return /^https?:\/\//.test(str);
   }
 
-  isUuid(str) {
+  isUuid(str: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
   }
 
-  isObjectId(str) {
+  isObjectId(str: string): boolean {
     return /^[a-f\d]{24}$/i.test(str);
   }
 
-  isPrimitive(value) {
+  isPrimitive(value: any): boolean {
     return ['string', 'number', 'boolean'].includes(typeof value);
   }
 
-  generateZodSchema() {
+  generateZodSchema(): string {
     const imports = new Set(['z']);
     let schema = `import { z } from 'zod';\n\n`;
 
@@ -192,7 +232,7 @@ class JSONToZodGenerator {
     const rootFields = Array.from(this.fieldStats.keys()).filter(key => !key.includes('.'));
 
     rootFields.forEach(fieldPath => {
-      const stats = this.fieldStats.get(fieldPath);
+      const stats = this.fieldStats.get(fieldPath)!;
       const fieldSchema = this.generateFieldSchema(fieldPath, stats);
       schema += `  ${this.sanitizeFieldName(fieldPath)}: ${fieldSchema},\n`;
     });
@@ -203,8 +243,8 @@ class JSONToZodGenerator {
     return schema;
   }
 
-  generateNestedSchemas() {
-    const schemas = [];
+  generateNestedSchemas(): { schemas: string; schemaNames: Map<string, string> } {
+    const schemas: string[] = [];
     const schemaNames = new Map();
 
     // Find all nested object paths
@@ -226,8 +266,8 @@ class JSONToZodGenerator {
         schemas.push(`const ${schemaName} = z.object({`);
 
         fields.forEach(fieldPath => {
-          const fieldName = fieldPath.split('.').pop();
-          const stats = this.fieldStats.get(fieldPath);
+          const fieldName = fieldPath.split('.').pop()!;
+          const stats = this.fieldStats.get(fieldPath)!;
           const fieldSchema = this.generateFieldSchema(fieldPath, stats);
           schemas.push(`  ${this.sanitizeFieldName(fieldName)}: ${fieldSchema},`);
         });
@@ -242,12 +282,14 @@ class JSONToZodGenerator {
     };
   }
 
-  generateFieldSchema(fieldPath, stats) {
+  generateFieldSchema(fieldPath: string, stats: FieldStats): string {
     const isOptional = stats.count / this.totalRecords < this.optionalThreshold;
     const isNullable = stats.nullCount > 0;
 
     // Get most common type
-    const typeEntries = Array.from(stats.types.entries()).sort((a, b) => b[1] - a[1]);
+    const typeEntries = Array.from(stats.types.entries()).sort(
+      (a, b) => (b[1] as number) - (a[1] as number)
+    );
     const primaryType = typeEntries[0]?.[0];
 
     let zodType = '';
@@ -287,7 +329,7 @@ class JSONToZodGenerator {
     return zodType;
   }
 
-  generateArraySchema(stats) {
+  generateArraySchema(stats: FieldStats): string {
     if (stats.arrayElementTypes.size === 1) {
       const elementType = Array.from(stats.arrayElementTypes)[0];
       const elementSchema = this.generatePrimitiveSchema(elementType);
@@ -301,13 +343,13 @@ class JSONToZodGenerator {
     return 'z.array(z.unknown())';
   }
 
-  generateEnumSchema(stats) {
+  generateEnumSchema(stats: FieldStats): string {
     const values = Array.from(stats.uniqueValues);
     const enumValues = values.map(v => (typeof v === 'string' ? `'${v}'` : v)).join(', ');
     return `z.enum([${enumValues}])`;
   }
 
-  generatePrimitiveSchema(type, stats = null) {
+  generatePrimitiveSchema(type: string, stats: FieldStats | null = null): string {
     switch (type) {
       case 'string':
         return 'z.string()';
@@ -336,7 +378,7 @@ class JSONToZodGenerator {
     }
   }
 
-  shouldBeEnum(stats) {
+  shouldBeEnum(stats: FieldStats): boolean {
     return (
       stats.uniqueValues.size <= this.enumThreshold &&
       stats.uniqueValues.size > 1 &&
@@ -344,7 +386,7 @@ class JSONToZodGenerator {
     );
   }
 
-  pathToSchemaName(path) {
+  pathToSchemaName(path: string): string {
     return (
       path
         .split('.')
@@ -353,7 +395,7 @@ class JSONToZodGenerator {
     );
   }
 
-  sanitizeFieldName(name) {
+  sanitizeFieldName(name: string): string {
     // Handle field names that aren't valid JS identifiers
     if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name)) {
       return name;
@@ -361,14 +403,14 @@ class JSONToZodGenerator {
     return `'${name}'`;
   }
 
-  generateTypeScript() {
+  generateTypeScript(): string {
     let types = `// Auto-generated TypeScript types\n\n`;
     types += `export interface GeneratedRecord {\n`;
 
     const rootFields = Array.from(this.fieldStats.keys()).filter(key => !key.includes('.'));
 
     rootFields.forEach(fieldPath => {
-      const stats = this.fieldStats.get(fieldPath);
+      const stats = this.fieldStats.get(fieldPath)!;
       const tsType = this.generateTSType(fieldPath, stats);
       const isOptional = stats.count / this.totalRecords < this.optionalThreshold;
       const optionalMarker = isOptional ? '?' : '';
@@ -385,7 +427,7 @@ class JSONToZodGenerator {
     return types;
   }
 
-  generateTSType(fieldPath, stats) {
+  generateTSType(fieldPath: string, stats: FieldStats): string {
     const isNullable = stats.nullCount > 0;
 
     if (stats.isArray) {
@@ -419,7 +461,7 @@ class JSONToZodGenerator {
     return isNullable ? `${baseType} | null` : baseType;
   }
 
-  primitiveToTSType(type) {
+  primitiveToTSType(type: string): string {
     switch (type) {
       case 'string':
       case 'email':
@@ -441,7 +483,7 @@ class JSONToZodGenerator {
     }
   }
 
-  generateEnumTypes() {
+  generateEnumTypes(): string {
     let enums = '';
 
     Array.from(this.fieldStats.entries()).forEach(([fieldPath, stats]) => {
@@ -465,7 +507,7 @@ class JSONToZodGenerator {
     return enums;
   }
 
-  generateIndexFile() {
+  generateIndexFile(): string {
     return `// Auto-generated exports
 export { RecordSchema } from './schema';
 export type { Record } from './schema';
@@ -473,8 +515,14 @@ export type { GeneratedRecord } from './types';
 `;
   }
 
-  getFieldStats() {
-    const stats = {};
+  getFieldStats(): Record<
+    string,
+    { coverage: number; types: string[]; uniqueValues: number; samples: any[] }
+  > {
+    const stats: Record<
+      string,
+      { coverage: number; types: string[]; uniqueValues: number; samples: any[] }
+    > = {};
     this.fieldStats.forEach((value, key) => {
       stats[key] = {
         coverage: (value.count / this.totalRecords) * 100,
@@ -488,7 +536,7 @@ export type { GeneratedRecord } from './types';
 }
 
 // CLI usage
-if (import.meta.url === `file://${process.argv[1]}`) {
+async function main() {
   const generator = new JSONToZodGenerator();
   const inputFile = process.argv[2];
   const outputDir = process.argv[3] || './generated';
@@ -498,10 +546,18 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(1);
   }
 
-  generator
-    .generateFromFile(inputFile, outputDir)
-    .then(() => console.log('✅ Schema generation complete!'))
-    .catch(err => console.error('❌ Error:', err));
+  try {
+    await generator.generateFromFile(inputFile, outputDir);
+    console.log('✅ Schema generation complete!');
+  } catch (err) {
+    console.error('❌ Error:', err);
+    process.exit(1);
+  }
+}
+
+// Check if this file is being run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
 }
 
 export default JSONToZodGenerator;

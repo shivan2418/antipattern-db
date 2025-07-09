@@ -212,7 +212,7 @@ describe('Nested Types Generation', () => {
     assert.ok(schemaContent.includes('export type Record'), 'should export Record type');
 
     // Verify each test record would have the expected structure
-    testData.forEach((record: unknown, index: number) => {
+    testData.forEach((record: any, index: number) => {
       assert.ok(typeof record.id === 'string', `Record ${index} should have string id`);
       assert.ok(typeof record.name === 'string', `Record ${index} should have string name`);
       assert.ok(typeof record.email === 'string', `Record ${index} should have string email`);

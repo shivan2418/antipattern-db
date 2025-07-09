@@ -11,11 +11,11 @@ interface FieldStats {
   count: number;
   nullCount: number;
   types: Map<string, number>;
-  uniqueValues: Set<any>;
-  samples: any[];
+  uniqueValues: Set<unknown>;
+  samples: unknown[];
   isArray: boolean;
   arrayElementTypes: Set<string>;
-  nestedFields: Map<string, any>;
+  nestedFields: Map<string, unknown>;
 }
 
 interface GenerationResult {
@@ -27,7 +27,7 @@ interface GenerationResult {
       coverage: number;
       types: string[];
       uniqueValues: number;
-      samples: any[];
+      samples: unknown[];
     }
   >;
 }
@@ -42,7 +42,7 @@ class JSONToZodGenerator {
   constructor(options: GeneratorOptions = {}) {
     this.sampleSize = options.sampleSize || 1000;
     this.enumThreshold = options.enumThreshold || 20; // If field has ≤20 unique values, make it enum
-    this.optionalThreshold = options.optionalThreshold || 0.9; // If field present in <90% of records, make optional
+    this.optionalThreshold = options.optionalThreshold || 0.5; // If field present in <50% of records, make optional
     this.fieldStats = new Map();
     this.totalRecords = 0;
   }
@@ -63,7 +63,7 @@ class JSONToZodGenerator {
     const sample = records.slice(0, Math.min(this.sampleSize, records.length));
     this.totalRecords = records.length;
 
-    sample.forEach((record, index) => {
+    sample.forEach(record => {
       this.analyzeRecord(record, '');
     });
 
@@ -92,30 +92,34 @@ class JSONToZodGenerator {
     };
   }
 
-  extractRecords(data: any): any[] {
+  extractRecords(data: unknown): unknown[] {
     if (Array.isArray(data)) {
       return data;
     } else if (typeof data === 'object' && data !== null) {
       // Find the largest array property
-      const arrayProps = Object.keys(data).filter(key => Array.isArray(data[key]));
+      const dataObj = data as Record<string, unknown>;
+      const arrayProps = Object.keys(dataObj).filter(key => Array.isArray(dataObj[key]));
       if (arrayProps.length > 0) {
         const largest = arrayProps.reduce((max, prop) =>
-          data[prop].length > data[max].length ? prop : max
+          (dataObj[prop] as unknown[]).length > (dataObj[max] as unknown[]).length ? prop : max
         );
-        console.log(`📋 Using collection: ${largest} (${data[largest].length} records)`);
-        return data[largest];
+        console.log(
+          `📋 Using collection: ${largest} (${(dataObj[largest] as unknown[]).length} records)`
+        );
+        return dataObj[largest] as unknown[];
       }
       return [data];
     }
     return [];
   }
 
-  analyzeRecord(record: any, prefix: string): void {
+  analyzeRecord(record: unknown, prefix: string): void {
     if (typeof record !== 'object' || record === null) return;
 
-    Object.keys(record).forEach(key => {
+    const recordObj = record as Record<string, unknown>;
+    Object.keys(recordObj).forEach(key => {
       const fieldPath = prefix ? `${prefix}.${key}` : key;
-      const value = record[key];
+      const value = recordObj[key];
 
       if (!this.fieldStats.has(fieldPath)) {
         this.fieldStats.set(fieldPath, {
@@ -157,6 +161,12 @@ class JSONToZodGenerator {
         value.forEach(item => {
           if (item !== null && item !== undefined) {
             stats.arrayElementTypes.add(this.getDetailedType(item));
+
+            // Recursively analyze array elements that are objects
+            // Use a generic path without the index to group all similar objects
+            if (typeof item === 'object' && !Array.isArray(item)) {
+              this.analyzeRecord(item, `${fieldPath}[]`);
+            }
           }
         });
       }
@@ -168,7 +178,7 @@ class JSONToZodGenerator {
     });
   }
 
-  getDetailedType(value: any): string {
+  getDetailedType(value: unknown): string {
     if (value === null) return 'null';
     if (Array.isArray(value)) return 'array';
     if (value instanceof Date) return 'date';
@@ -186,6 +196,10 @@ class JSONToZodGenerator {
 
     if (typeof value === 'number') {
       return Number.isInteger(value) ? 'integer' : 'number';
+    }
+
+    if (typeof value === 'object' && value !== null) {
+      return 'object';
     }
 
     return typeof value;
@@ -214,12 +228,12 @@ class JSONToZodGenerator {
     return /^[a-f\d]{24}$/i.test(str);
   }
 
-  isPrimitive(value: any): boolean {
+  isPrimitive(value: unknown): boolean {
     return ['string', 'number', 'boolean'].includes(typeof value);
   }
 
   generateZodSchema(): string {
-    const imports = new Set(['z']);
+    // const imports = new Set(['z']); // Will be used for future imports
     let schema = `import { z } from 'zod';\n\n`;
 
     // Generate nested schemas first
@@ -250,7 +264,11 @@ class JSONToZodGenerator {
     // Find all nested object paths
     const nestedPaths = Array.from(this.fieldStats.keys())
       .filter(key => key.includes('.'))
-      .map(key => key.split('.').slice(0, -1).join('.'))
+      .map(key => {
+        const parts = key.split('.');
+        // Handle array notation - remove the field name to get the container path
+        return parts.slice(0, -1).join('.');
+      })
       .filter((path, index, arr) => arr.indexOf(path) === index)
       .sort((a, b) => b.split('.').length - a.split('.').length); // Deepest first
 
@@ -259,7 +277,7 @@ class JSONToZodGenerator {
       schemaNames.set(path, schemaName);
 
       const fields = Array.from(this.fieldStats.keys()).filter(
-        key => key.startsWith(path + '.') && !key.slice(path.length + 1).includes('.')
+        key => key.startsWith(`${path}.`) && !key.slice(path.length + 1).includes('.')
       );
 
       if (fields.length > 0) {
@@ -268,7 +286,7 @@ class JSONToZodGenerator {
         fields.forEach(fieldPath => {
           const fieldName = fieldPath.split('.').pop()!;
           const stats = this.fieldStats.get(fieldPath)!;
-          const fieldSchema = this.generateFieldSchema(fieldPath, stats);
+          const fieldSchema = this.generateFieldSchema(fieldPath, stats, schemaNames);
           schemas.push(`  ${this.sanitizeFieldName(fieldName)}: ${fieldSchema},`);
         });
 
@@ -277,12 +295,16 @@ class JSONToZodGenerator {
     });
 
     return {
-      schemas: schemas.length > 0 ? schemas.join('\n') + '\n' : '',
+      schemas: schemas.length > 0 ? `${schemas.join('\n')}\n` : '',
       schemaNames,
     };
   }
 
-  generateFieldSchema(fieldPath: string, stats: FieldStats): string {
+  generateFieldSchema(
+    fieldPath: string,
+    stats: FieldStats,
+    schemaNames?: Map<string, string>
+  ): string {
     const isOptional = stats.count / this.totalRecords < this.optionalThreshold;
     const isNullable = stats.nullCount > 0;
 
@@ -295,21 +317,27 @@ class JSONToZodGenerator {
     let zodType = '';
 
     if (stats.isArray) {
-      zodType = this.generateArraySchema(stats);
+      zodType = this.generateArraySchema(stats, schemaNames, fieldPath);
     } else if (this.shouldBeEnum(stats)) {
       zodType = this.generateEnumSchema(stats);
-    } else if (fieldPath.includes('.')) {
-      // Nested object reference
-      const parentPath = fieldPath.split('.').slice(0, -1).join('.');
-      zodType = this.pathToSchemaName(parentPath);
+    } else if (this.isBooleanUnion(stats)) {
+      zodType = 'z.boolean()';
+    } else if (primaryType === 'object' || this.hasNestedFields(fieldPath)) {
+      // Handle nested objects
+      if (schemaNames && schemaNames.has(fieldPath)) {
+        zodType = schemaNames.get(fieldPath)!;
+      } else {
+        // For objects without nested schema, use z.record() for dynamic properties
+        zodType = 'z.record(z.unknown())';
+      }
     } else {
       zodType = this.generatePrimitiveSchema(primaryType, stats);
     }
 
-    // Handle multiple types (union)
-    if (stats.types.size > 1 && !stats.isArray) {
+    // Handle multiple types (union) - but not for objects
+    if (stats.types.size > 1 && !stats.isArray && primaryType !== 'object') {
       const unionTypes = Array.from(stats.types.keys())
-        .filter(type => type !== 'null')
+        .filter(type => type !== 'null' && type !== 'object')
         .map(type => this.generatePrimitiveSchema(type, stats));
 
       if (unionTypes.length > 1) {
@@ -329,15 +357,42 @@ class JSONToZodGenerator {
     return zodType;
   }
 
-  generateArraySchema(stats: FieldStats): string {
+  generateArraySchema(
+    stats: FieldStats,
+    schemaNames?: Map<string, string>,
+    fieldPath?: string
+  ): string {
     if (stats.arrayElementTypes.size === 1) {
       const elementType = Array.from(stats.arrayElementTypes)[0];
+      if (elementType === 'object') {
+        // Check if we have a schema for array elements
+        const arrayElementPath = fieldPath ? `${fieldPath}[]` : '';
+        if (schemaNames && schemaNames.has(arrayElementPath)) {
+          return `z.array(${schemaNames.get(arrayElementPath)})`;
+        }
+        // If no specific schema, but we know there are nested fields, try to find a matching schema
+        if (fieldPath && this.hasNestedFields(arrayElementPath)) {
+          const schemaName = this.pathToSchemaName(arrayElementPath);
+          return `z.array(${schemaName})`;
+        }
+        return 'z.array(z.record(z.unknown()))';
+      }
       const elementSchema = this.generatePrimitiveSchema(elementType);
       return `z.array(${elementSchema})`;
     } else if (stats.arrayElementTypes.size > 1) {
-      const unionTypes = Array.from(stats.arrayElementTypes).map(type =>
-        this.generatePrimitiveSchema(type)
-      );
+      const unionTypes = Array.from(stats.arrayElementTypes).map(type => {
+        if (type === 'object') {
+          const arrayElementPath = fieldPath ? `${fieldPath}[]` : '';
+          if (schemaNames && schemaNames.has(arrayElementPath)) {
+            return schemaNames.get(arrayElementPath)!;
+          }
+          if (fieldPath && this.hasNestedFields(arrayElementPath)) {
+            return this.pathToSchemaName(arrayElementPath);
+          }
+          return 'z.record(z.unknown())';
+        }
+        return this.generatePrimitiveSchema(type);
+      });
       return `z.array(z.union([${unionTypes.join(', ')}]))`;
     }
     return 'z.array(z.unknown())';
@@ -349,7 +404,7 @@ class JSONToZodGenerator {
     return `z.enum([${enumValues}])`;
   }
 
-  generatePrimitiveSchema(type: string, stats: FieldStats | null = null): string {
+  generatePrimitiveSchema(type: string, _stats: FieldStats | null = null): string {
     switch (type) {
       case 'string':
         return 'z.string()';
@@ -373,12 +428,22 @@ class JSONToZodGenerator {
         return 'z.date()';
       case 'objectid':
         return 'z.string().length(24)';
+      case 'object':
+        return 'z.record(z.unknown())';
       default:
         return 'z.unknown()';
     }
   }
 
   shouldBeEnum(stats: FieldStats): boolean {
+    // Don't create enums for boolean values
+    const values = Array.from(stats.uniqueValues);
+    const hasOnlyBooleans = values.every(v => typeof v === 'boolean');
+
+    if (hasOnlyBooleans) {
+      return false;
+    }
+
     return (
       stats.uniqueValues.size <= this.enumThreshold &&
       stats.uniqueValues.size > 1 &&
@@ -386,13 +451,37 @@ class JSONToZodGenerator {
     );
   }
 
-  pathToSchemaName(path: string): string {
-    return (
-      path
-        .split('.')
-        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-        .join('') + 'Schema'
+  hasNestedFields(fieldPath: string): boolean {
+    return Array.from(this.fieldStats.keys()).some(
+      key => key.startsWith(`${fieldPath}.`) && key !== fieldPath
     );
+  }
+
+  isBooleanUnion(stats: FieldStats): boolean {
+    const values = Array.from(stats.uniqueValues);
+    return values.length === 2 && values.every(v => typeof v === 'boolean');
+  }
+
+  pathToSchemaName(path: string): string {
+    return `${path
+      .split('.')
+      .map(part => {
+        // Handle array notation by removing brackets
+        const cleanPart = part.replace(/\[\]/g, 'Item');
+        return cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1);
+      })
+      .join('')}Schema`;
+  }
+
+  pathToTypeName(path: string): string {
+    return path
+      .split('.')
+      .map(part => {
+        // Handle array notation by removing brackets
+        const cleanPart = part.replace(/\[\]/g, 'Item');
+        return cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1);
+      })
+      .join('');
   }
 
   sanitizeFieldName(name: string): string {
@@ -405,6 +494,11 @@ class JSONToZodGenerator {
 
   generateTypeScript(): string {
     let types = `// Auto-generated TypeScript types\n\n`;
+
+    // Generate nested interface types first
+    const nestedTypes = this.generateNestedTypes();
+    types += nestedTypes;
+
     types += `export interface GeneratedRecord {\n`;
 
     const rootFields = Array.from(this.fieldStats.keys()).filter(key => !key.includes('.'));
@@ -427,17 +521,73 @@ class JSONToZodGenerator {
     return types;
   }
 
+  generateNestedTypes(): string {
+    let types = '';
+
+    // Find all nested object paths
+    const nestedPaths = Array.from(this.fieldStats.keys())
+      .filter(key => key.includes('.'))
+      .map(key => {
+        const parts = key.split('.');
+        return parts.slice(0, -1).join('.');
+      })
+      .filter((path, index, arr) => arr.indexOf(path) === index)
+      .sort((a, b) => b.split('.').length - a.split('.').length); // Deepest first
+
+    nestedPaths.forEach(path => {
+      const typeName = this.pathToTypeName(path);
+
+      const fields = Array.from(this.fieldStats.keys()).filter(
+        key => key.startsWith(`${path}.`) && !key.slice(path.length + 1).includes('.')
+      );
+
+      if (fields.length > 0) {
+        types += `export interface ${typeName} {\n`;
+
+        fields.forEach(fieldPath => {
+          const fieldName = fieldPath.split('.').pop()!;
+          const stats = this.fieldStats.get(fieldPath)!;
+          const tsType = this.generateTSType(fieldPath, stats);
+          const isOptional = stats.count / this.totalRecords < this.optionalThreshold;
+          const optionalMarker = isOptional ? '?' : '';
+
+          types += `  ${this.sanitizeFieldName(fieldName)}${optionalMarker}: ${tsType};\n`;
+        });
+
+        types += `}\n\n`;
+      }
+    });
+
+    return types;
+  }
+
   generateTSType(fieldPath: string, stats: FieldStats): string {
     const isNullable = stats.nullCount > 0;
 
     if (stats.isArray) {
       if (stats.arrayElementTypes.size === 1) {
         const elementType = Array.from(stats.arrayElementTypes)[0];
+        if (elementType === 'object') {
+          // Check if we have a specific type for array elements
+          const arrayElementPath = `${fieldPath}[]`;
+          if (this.hasNestedFields(arrayElementPath)) {
+            const typeName = this.pathToTypeName(arrayElementPath);
+            return `${typeName}[]`;
+          }
+          return 'Record<string, unknown>[]';
+        }
         return `${this.primitiveToTSType(elementType)}[]`;
       } else {
-        const unionTypes = Array.from(stats.arrayElementTypes).map(type =>
-          this.primitiveToTSType(type)
-        );
+        const unionTypes = Array.from(stats.arrayElementTypes).map(type => {
+          if (type === 'object') {
+            const arrayElementPath = `${fieldPath}[]`;
+            if (this.hasNestedFields(arrayElementPath)) {
+              return this.pathToTypeName(arrayElementPath);
+            }
+            return 'Record<string, unknown>';
+          }
+          return this.primitiveToTSType(type);
+        });
         return `(${unionTypes.join(' | ')})[]`;
       }
     }
@@ -448,6 +598,13 @@ class JSONToZodGenerator {
       return isNullable ? `${unionType} | null` : unionType;
     }
 
+    // Handle object types
+    const primaryType = Array.from(stats.types.keys())[0];
+    if (primaryType === 'object' || this.hasNestedFields(fieldPath)) {
+      const baseType = 'Record<string, unknown>';
+      return isNullable ? `${baseType} | null` : baseType;
+    }
+
     if (stats.types.size > 1) {
       const unionTypes = Array.from(stats.types.keys())
         .filter(type => type !== 'null')
@@ -456,7 +613,6 @@ class JSONToZodGenerator {
       return isNullable ? `${baseType} | null` : baseType;
     }
 
-    const primaryType = Array.from(stats.types.keys())[0];
     const baseType = this.primitiveToTSType(primaryType);
     return isNullable ? `${baseType} | null` : baseType;
   }
@@ -478,6 +634,8 @@ class JSONToZodGenerator {
         return 'boolean';
       case 'date':
         return 'Date';
+      case 'object':
+        return 'Record<string, unknown>';
       default:
         return 'unknown';
     }
@@ -488,7 +646,7 @@ class JSONToZodGenerator {
 
     Array.from(this.fieldStats.entries()).forEach(([fieldPath, stats]) => {
       if (this.shouldBeEnum(stats) && !fieldPath.includes('.')) {
-        const enumName = fieldPath.charAt(0).toUpperCase() + fieldPath.slice(1) + 'Enum';
+        const enumName = `${fieldPath.charAt(0).toUpperCase() + fieldPath.slice(1)}Enum`;
         const values = Array.from(stats.uniqueValues);
 
         enums += `export enum ${enumName} {\n`;
@@ -517,11 +675,11 @@ export type { GeneratedRecord } from './types';
 
   getFieldStats(): Record<
     string,
-    { coverage: number; types: string[]; uniqueValues: number; samples: any[] }
+    { coverage: number; types: string[]; uniqueValues: number; samples: unknown[] }
   > {
     const stats: Record<
       string,
-      { coverage: number; types: string[]; uniqueValues: number; samples: any[] }
+      { coverage: number; types: string[]; uniqueValues: number; samples: unknown[] }
     > = {};
     this.fieldStats.forEach((value, key) => {
       stats[key] = {

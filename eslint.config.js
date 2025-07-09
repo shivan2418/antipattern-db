@@ -79,7 +79,15 @@ export default [
       '*.d.ts',
       'tmp/',
       'temp/',
-      'jsontozod.ts', // Utility file not part of main source
     ],
+  },
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
   },
 ];

@@ -1,0 +1,19 @@
+{
+  "name": "antipattern-db",
+  "version": "1.0.0",
+  "description": "Static json file database",
+  "keywords": [
+    "datbase"
+  ],
+  "license": "MIT",
+  "author": "Emil Elgaard",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "git": "^0.1.5",
+    "init": "^0.1.2"
+  }
+}

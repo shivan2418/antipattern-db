@@ -49,16 +49,19 @@ import type { GeneratedRecord } from './types.js';
  * 
  * Usage:
  *   import { db } from './database';
- *   await db.init();
- *   
+ *
  *   // ✅ Type-safe - only allows valid field names
+ *   // Database auto-initializes on first use
  *   const results = await db.query()
  *     .where('status').equals('active')  // 'status' must exist in GeneratedRecord
  *     .where('profile.age').greaterThan(25)  // nested fields supported
  *     .exec();
- *   
+ *
  *   // ❌ Compile error - field doesn't exist
  *   // const results = await db.query().where('nonExistentField').equals('value');
+ *
+ *   // Optional: Manual initialization (for error handling)
+ *   // await db.init();
  */
 export const db = new TypedDatabaseClient<GeneratedRecord, typeof RecordSchema>(
   import.meta.dirname || '.',

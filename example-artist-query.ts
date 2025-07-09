@@ -10,7 +10,7 @@
 /* eslint-disable no-console */
 /* eslint-disable no-undef */
 
-import { AntipatternDB } from './src/runtime/query-client.js';
+import { AntipatternDB } from './src';
 
 // Example of record type (would be generated)
 interface Artist {
@@ -46,6 +46,8 @@ async function main() {
     await db.init();
 
     console.log('✅ Database connected successfully!\n');
+
+    await db.query().where('foo').contains('abc')
 
     // Step 3: Get basic statistics
     console.log('📊 Database Statistics:');

@@ -19,7 +19,7 @@ export class TypedDatabaseClient<
   }
 
   /**
-   * Initialize the database connection
+   * Initialize the database connection (optional - auto-initializes on first use)
    */
   async init(): Promise<void> {
     if (!this.initialized) {
@@ -29,11 +29,11 @@ export class TypedDatabaseClient<
   }
 
   /**
-   * Ensure the database is initialized
+   * Ensure the database is initialized, auto-initializing if needed
    */
-  private ensureInitialized(): void {
+  private async ensureInitialized(): Promise<void> {
     if (!this.initialized) {
-      throw new Error('Database not initialized. Call init() first.');
+      await this.init();
     }
   }
 
@@ -41,11 +41,11 @@ export class TypedDatabaseClient<
    * Create a type-safe query that constrains field names to valid record keys
    */
   query(): TypeSafeQueryBuilder<TRecord> {
-    this.ensureInitialized();
-    // Create a type-safe query builder that uses the client's executeQuery method
-    return new TypeSafeQueryBuilder<TRecord>((filters, options) => 
-      this.client._executeQuery<TRecord>(filters, options)
-    );
+    // Create a type-safe query builder that auto-initializes on execution
+    return new TypeSafeQueryBuilder<TRecord>(async (filters, options) => {
+      await this.ensureInitialized();
+      return this.client._executeQuery<TRecord>(filters, options);
+    });
   }
 
   /**
@@ -53,7 +53,11 @@ export class TypedDatabaseClient<
    * @deprecated Use query() for type safety
    */
   queryLegacy(): QueryBuilder<TRecord> {
-    this.ensureInitialized();
+    // Note: Legacy query builder still requires manual initialization
+    // This is intentional to encourage migration to the new API
+    if (!this.initialized) {
+      throw new Error('Database not initialized. Call init() first or use query() instead.');
+    }
     return this.client.query<TRecord>();
   }
 
@@ -61,7 +65,7 @@ export class TypedDatabaseClient<
    * Get a single record by ID with type safety
    */
   async get(id: string): Promise<TRecord | null> {
-    this.ensureInitialized();
+    await this.ensureInitialized();
     return this.client.get<TRecord>(id);
   }
 
@@ -69,7 +73,7 @@ export class TypedDatabaseClient<
    * Count total records
    */
   async count(): Promise<number> {
-    this.ensureInitialized();
+    await this.ensureInitialized();
     return this.client.count();
   }
 
@@ -77,7 +81,7 @@ export class TypedDatabaseClient<
    * Get all available fields
    */
   async getFields(): Promise<string[]> {
-    this.ensureInitialized();
+    await this.ensureInitialized();
     return this.client.getFields();
   }
 
@@ -85,7 +89,7 @@ export class TypedDatabaseClient<
    * Get indexed fields
    */
   async getIndexedFields(): Promise<string[]> {
-    this.ensureInitialized();
+    await this.ensureInitialized();
     return this.client.getIndexedFields();
   }
 

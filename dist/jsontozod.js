@@ -1,6 +1,12 @@
+/* eslint-disable no-console, @typescript-eslint/no-non-null-assertion */
 import * as fs from 'fs';
 import * as path from 'path';
 class JSONToZodGenerator {
+    sampleSize;
+    enumThreshold;
+    optionalThreshold;
+    fieldStats;
+    totalRecords;
     constructor(options = {}) {
         this.sampleSize = options.sampleSize || 1000;
         this.enumThreshold = options.enumThreshold || 20; // If field has ≤20 unique values, make it enum
@@ -575,3 +581,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     main();
 }
 export default JSONToZodGenerator;
+//# sourceMappingURL=jsontozod.js.map

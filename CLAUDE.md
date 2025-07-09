@@ -1,6 +1,7 @@
 # Rules
 
 - use pnpm
+- use inbuilt node test framework.
 
 Perfect! Now I have a clear understanding of your vision. Let me create a comprehensive plan for building this static file database library.
 

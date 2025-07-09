@@ -57,20 +57,27 @@ export class DataSplitter {
   /**
    * Split a collection of records into individual or batched files
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   splitRecords(records: any[]): SplitResult {
+    // eslint-disable-next-line no-console
     console.log(`📂 Splitting ${records.length} records into files...`);
+
+    // Validate records and primary key field
+    this.validateRecords(records);
 
     const dataDir = path.join(this.options.outputDir, 'data');
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const primaryKeyField = this.options.primaryKeyField!;
     const recordMap = new Map<string, string>();
     const fileMetadata: FileMetadata[] = [];
     let totalSize = 0;
 
-    if (this.options.batchSize && this.options.batchSize > 1) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    if (this.options.batchSize && this.options.batchSize! > 1) {
       // Batch mode: multiple records per file
       const result = this.splitIntoBatches(records, dataDir, primaryKeyField);
       result.files.forEach(file => {
@@ -84,7 +91,7 @@ export class DataSplitter {
       // Individual mode: one record per file
       for (let i = 0; i < records.length; i++) {
         const record = records[i];
-        const recordId = record[primaryKeyField] || i.toString();
+        const recordId = record[primaryKeyField];
 
         const { filename, size } = this.writeRecordFile(record, recordId, dataDir, i);
         recordMap.set(recordId, filename);
@@ -100,6 +107,7 @@ export class DataSplitter {
         totalSize += size;
 
         if (i % 1000 === 0) {
+          // eslint-disable-next-line no-console
           console.log(`  📄 Processed ${i + 1}/${records.length} records`);
         }
       }
@@ -111,7 +119,9 @@ export class DataSplitter {
       totalFiles: fileMetadata.length,
       avgFileSize: totalSize / fileMetadata.length,
       primaryKeyField,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       batchSize: this.options.batchSize! > 1 ? this.options.batchSize : undefined,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       useSubdirectories: this.options.useSubdirectories!,
       createdAt: new Date().toISOString(),
       files: fileMetadata,
@@ -123,8 +133,11 @@ export class DataSplitter {
       JSON.stringify(metadata, null, 2)
     );
 
+    // eslint-disable-next-line no-console
     console.log(`✅ Split ${records.length} records into ${fileMetadata.length} files`);
+    // eslint-disable-next-line no-console
     console.log(`   Total size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+    // eslint-disable-next-line no-console
     console.log(`   Average file size: ${(metadata.avgFileSize / 1024).toFixed(2)} KB`);
 
     return {
@@ -140,10 +153,12 @@ export class DataSplitter {
    * Split records into batch files
    */
   private splitIntoBatches(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     records: any[],
     dataDir: string,
     primaryKeyField: string
   ): { files: FileMetadata[] } {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const batchSize = this.options.batchSize!;
     const files: FileMetadata[] = [];
 
@@ -151,9 +166,7 @@ export class DataSplitter {
       const batch = records.slice(i, Math.min(i + batchSize, records.length));
       const batchIndex = Math.floor(i / batchSize);
 
-      const recordIds = batch.map(
-        record => record[primaryKeyField] || (i + batch.indexOf(record)).toString()
-      );
+      const recordIds = batch.map(record => record[primaryKeyField]);
 
       const filename = this.generateBatchFilename(batchIndex);
       const subdirectory = this.options.useSubdirectories
@@ -194,8 +207,9 @@ export class DataSplitter {
    * Write a single record to file
    */
   private writeRecordFile(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     record: any,
-    recordId: string,
+    recordId: unknown,
     dataDir: string,
     index: number
   ): { filename: string; size: number } {
@@ -228,8 +242,10 @@ export class DataSplitter {
   /**
    * Generate filename for a single record
    */
-  private generateFilename(recordId: string, index: number): string {
+  private generateFilename(recordId: unknown, index: number): string {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     if (this.options.filenameTemplate!.includes('{id}')) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return `${this.options
         .filenameTemplate!.replace('{id}', this.sanitizeId(recordId))
         .replace('{index}', index.toString().padStart(6, '0'))}.json`;
@@ -267,8 +283,11 @@ export class DataSplitter {
   /**
    * Sanitize record ID for use in filename
    */
-  private sanitizeId(id: string): string {
-    return id
+  private sanitizeId(id: unknown): string {
+    // Convert any value to string first
+    const idString = String(id);
+
+    return idString
       .replace(/[^a-zA-Z0-9.-]/g, '_')
       .replace(/_{2,}/g, '_')
       .replace(/^_|_$/g, '')
@@ -278,6 +297,7 @@ export class DataSplitter {
   /**
    * Extract records from various JSON structures
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static extractRecords(data: unknown): any[] {
     if (Array.isArray(data)) {
       return data;
@@ -291,6 +311,7 @@ export class DataSplitter {
           (dataObj[prop] as unknown[]).length > (dataObj[max] as unknown[]).length ? prop : max
         );
 
+        // eslint-disable-next-line no-console
         console.log(
           `📋 Using collection: ${largest} (${(dataObj[largest] as unknown[]).length} records)`
         );
@@ -301,5 +322,37 @@ export class DataSplitter {
     }
 
     return [];
+  }
+
+  /**
+   * Validate records and primary key field
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private validateRecords(records: any[]): void {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const primaryKeyField = this.options.primaryKeyField!;
+
+    if (!records.length) {
+      throw new Error('No records to split.');
+    }
+
+    if (!records.every(record => Object.prototype.hasOwnProperty.call(record, primaryKeyField))) {
+      throw new Error(`All records must have a "${primaryKeyField}" field.`);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const primaryKeyValues = new Set<any>();
+    for (const record of records) {
+      const recordId = record[primaryKeyField];
+      if (primaryKeyValues.has(recordId)) {
+        throw new Error(`Duplicate primary key value found: ${recordId}`);
+      }
+      primaryKeyValues.add(recordId);
+    }
+
+    // eslint-disable-next-line no-console
+    console.log(`  ✅ Primary key field "${primaryKeyField}" is valid.`);
+    // eslint-disable-next-line no-console
+    console.log(`  ✅ All records have unique primary key values.`);
   }
 }

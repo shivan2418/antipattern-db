@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import { AntipatternBuilder } from '../src/builder/index.js';
+import { DataSplitter } from '../src/builder/data-splitter.js';
 
 // Test data with complex nested structure
 const testData = [
@@ -302,5 +303,267 @@ describe('Builder Tests', () => {
 
     assert.strictEqual(batch1.length, 2, 'First batch should have 2 records');
     assert.strictEqual(batch2.length, 1, 'Second batch should have 1 record');
+  });
+});
+
+describe('DataSplitter Validation Tests', () => {
+  const testOutputDir = './test-data-splitter-output';
+
+  before(() => {
+    // Cleanup any existing test files
+    try {
+      fs.rmSync(testOutputDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  after(() => {
+    // Cleanup test files
+    try {
+      fs.rmSync(testOutputDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  test('should successfully split valid records with unique primary keys', () => {
+    const splitter = new DataSplitter({
+      outputDir: testOutputDir,
+      primaryKeyField: 'id',
+      batchSize: 1,
+    });
+
+    const validRecords = [
+      { id: 'user-1', name: 'John' },
+      { id: 'user-2', name: 'Jane' },
+      { id: 'user-3', name: 'Bob' },
+    ];
+
+    const result = splitter.splitRecords(validRecords);
+    assert.strictEqual(result.totalRecords, 3, 'Should process all 3 records');
+    assert.strictEqual(result.totalFiles, 3, 'Should create 3 files');
+  });
+
+  test('should throw error for empty records array', () => {
+    const splitter = new DataSplitter({
+      outputDir: testOutputDir,
+      primaryKeyField: 'id',
+    });
+
+    assert.throws(
+      () => splitter.splitRecords([]),
+      { message: 'No records to split.' },
+      'Should throw error for empty records array'
+    );
+  });
+
+  test('should throw error when primary key field is missing', () => {
+    const splitter = new DataSplitter({
+      outputDir: testOutputDir,
+      primaryKeyField: 'id',
+    });
+
+    const recordsWithMissingPrimaryKey = [
+      { id: 'user-1', name: 'John' },
+      { name: 'Jane' }, // Missing 'id' field
+      { id: 'user-3', name: 'Bob' },
+    ];
+
+    assert.throws(
+      () => splitter.splitRecords(recordsWithMissingPrimaryKey),
+      { message: 'All records must have a "id" field.' },
+      'Should throw error when records are missing primary key field'
+    );
+  });
+
+  test('should throw error for duplicate primary key values', () => {
+    const splitter = new DataSplitter({
+      outputDir: testOutputDir,
+      primaryKeyField: 'id',
+    });
+
+    const recordsWithDuplicates = [
+      { id: 'user-1', name: 'John' },
+      { id: 'user-2', name: 'Jane' },
+      { id: 'user-1', name: 'Bob' }, // Duplicate 'user-1' id
+    ];
+
+    assert.throws(
+      () => splitter.splitRecords(recordsWithDuplicates),
+      { message: 'Duplicate primary key value found: user-1' },
+      'Should throw error for duplicate primary key values'
+    );
+  });
+
+  test('should throw error for null primary key values', () => {
+    const splitter = new DataSplitter({
+      outputDir: testOutputDir,
+      primaryKeyField: 'id',
+    });
+
+    const recordsWithNullPrimaryKey = [
+      { id: 'user-1', name: 'John' },
+      { id: null, name: 'Jane' },
+      { id: null, name: 'Bob' }, // Another null - this should trigger duplicate error
+    ];
+
+    assert.throws(
+      () => splitter.splitRecords(recordsWithNullPrimaryKey),
+      { message: 'Duplicate primary key value found: null' },
+      'Should throw error when multiple records have null primary key'
+    );
+  });
+
+  test('should throw error for undefined primary key values', () => {
+    const splitter = new DataSplitter({
+      outputDir: testOutputDir,
+      primaryKeyField: 'id',
+    });
+
+    const recordsWithUndefinedPrimaryKey = [
+      { id: 'user-1', name: 'John' },
+      { id: undefined, name: 'Jane' },
+      { id: undefined, name: 'Bob' }, // Another undefined - this should trigger duplicate error
+    ];
+
+    assert.throws(
+      () => splitter.splitRecords(recordsWithUndefinedPrimaryKey),
+      { message: 'Duplicate primary key value found: undefined' },
+      'Should throw error when multiple records have undefined primary key'
+    );
+  });
+
+  test('should work with custom primary key field', () => {
+    const splitter = new DataSplitter({
+      outputDir: testOutputDir,
+      primaryKeyField: 'userId',
+      batchSize: 1,
+    });
+
+    const recordsWithCustomPrimaryKey = [
+      { userId: 'abc123', name: 'John' },
+      { userId: 'def456', name: 'Jane' },
+      { userId: 'ghi789', name: 'Bob' },
+    ];
+
+    const result = splitter.splitRecords(recordsWithCustomPrimaryKey);
+    assert.strictEqual(result.totalRecords, 3, 'Should process all 3 records');
+    assert.strictEqual(result.totalFiles, 3, 'Should create 3 files');
+  });
+
+  test('should throw error when custom primary key field is missing', () => {
+    const splitter = new DataSplitter({
+      outputDir: testOutputDir,
+      primaryKeyField: 'userId',
+    });
+
+    const recordsWithMissingCustomPrimaryKey = [
+      { userId: 'abc123', name: 'John' },
+      { id: 'user-2', name: 'Jane' }, // Has 'id' but not 'userId'
+      { userId: 'ghi789', name: 'Bob' },
+    ];
+
+    assert.throws(
+      () => splitter.splitRecords(recordsWithMissingCustomPrimaryKey),
+      { message: 'All records must have a "userId" field.' },
+      'Should throw error when records are missing custom primary key field'
+    );
+  });
+
+  test('should work correctly in batch mode with validation', () => {
+    const splitter = new DataSplitter({
+      outputDir: testOutputDir,
+      primaryKeyField: 'id',
+      batchSize: 2, // 2 records per batch
+    });
+
+    const validRecords = [
+      { id: 'user-1', name: 'John' },
+      { id: 'user-2', name: 'Jane' },
+      { id: 'user-3', name: 'Bob' },
+      { id: 'user-4', name: 'Alice' },
+    ];
+
+    const result = splitter.splitRecords(validRecords);
+    assert.strictEqual(result.totalRecords, 4, 'Should process all 4 records');
+    assert.strictEqual(result.totalFiles, 2, 'Should create 2 batch files');
+  });
+
+  test('should throw error in batch mode when primary key field is missing', () => {
+    const splitter = new DataSplitter({
+      outputDir: testOutputDir,
+      primaryKeyField: 'id',
+      batchSize: 2,
+    });
+
+    const recordsWithMissingPrimaryKey = [
+      { id: 'user-1', name: 'John' },
+      { name: 'Jane' }, // Missing 'id' field
+      { id: 'user-3', name: 'Bob' },
+    ];
+
+    assert.throws(
+      () => splitter.splitRecords(recordsWithMissingPrimaryKey),
+      { message: 'All records must have a "id" field.' },
+      'Should throw error in batch mode when records are missing primary key field'
+    );
+  });
+
+  test('should allow single null/undefined primary key if only one exists', () => {
+    const splitter = new DataSplitter({
+      outputDir: testOutputDir,
+      primaryKeyField: 'id',
+      batchSize: 1,
+    });
+
+    // Single null value should be allowed (not duplicate)
+    const recordsWithSingleNull = [
+      { id: 'user-1', name: 'John' },
+      { id: null, name: 'Jane' },
+      { id: 'user-3', name: 'Bob' },
+    ];
+
+    // This should NOT throw an error since there's only one null value
+    const result = splitter.splitRecords(recordsWithSingleNull);
+    assert.strictEqual(result.totalRecords, 3, 'Should process all 3 records');
+    assert.strictEqual(result.totalFiles, 3, 'Should create 3 files');
+  });
+
+  test('should handle numeric primary keys correctly', () => {
+    const splitter = new DataSplitter({
+      outputDir: testOutputDir,
+      primaryKeyField: 'id',
+      batchSize: 1,
+    });
+
+    const recordsWithNumericKeys = [
+      { id: 1, name: 'John' },
+      { id: 2, name: 'Jane' },
+      { id: 3, name: 'Bob' },
+    ];
+
+    const result = splitter.splitRecords(recordsWithNumericKeys);
+    assert.strictEqual(result.totalRecords, 3, 'Should process all 3 records');
+    assert.strictEqual(result.totalFiles, 3, 'Should create 3 files');
+  });
+
+  test('should throw error for duplicate numeric primary keys', () => {
+    const splitter = new DataSplitter({
+      outputDir: testOutputDir,
+      primaryKeyField: 'id',
+    });
+
+    const recordsWithDuplicateNumericKeys = [
+      { id: 1, name: 'John' },
+      { id: 2, name: 'Jane' },
+      { id: 1, name: 'Bob' }, // Duplicate numeric id
+    ];
+
+    assert.throws(
+      () => splitter.splitRecords(recordsWithDuplicateNumericKeys),
+      { message: 'Duplicate primary key value found: 1' },
+      'Should throw error for duplicate numeric primary key values'
+    );
   });
 });

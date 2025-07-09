@@ -4,6 +4,7 @@ export type { BuilderOptions, BuildResult } from './builder/index.js';
 
 // Runtime exports
 export { AntipatternDB, QueryBuilder } from './runtime/query-client.js';
+export { TypedDatabaseClient, createTypedClient } from './runtime/typed-client.js';
 export type {
   DatabaseRecord,
   DatabaseIndex,

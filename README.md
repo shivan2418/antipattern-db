@@ -28,6 +28,7 @@ A powerful TypeScript library that converts large JSON files into a queryable, s
 ### 🏗️ **Static Database Builder**
 
 - Complete build pipeline from JSON to queryable database
+- **Generates ready-to-import, type-safe database client**
 - Validation and consistency checking
 - Comprehensive metadata and build manifests
 - Performance optimized for large datasets
@@ -85,23 +86,26 @@ pnpm run db:info ./database
 ### Runtime Query Client
 
 ```typescript
-import { AntipatternDB } from 'antipattern-db';
+import { db } from './database';
 
-// Initialize database client
-const db = new AntipatternDB('./database');
+// Initialize database client (pre-configured with types)
 await db.init();
 
-// Simple queries
+// Simple queries with full type safety
 const user = await db.get('user-123');
-const activeUsers = await db.query().where('status', 'active').exec();
+const activeUsers = await db.query().where('status').equals('active').exec();
 
-// Advanced queries with multiple filters  
+// Advanced queries with multiple filters (fully typed)
 const results = await db
   .query()
-  .where('age').greaterThan(25)
-  .where('status').equals('active')
-  .where('roles').contains('admin')
-  .where('profile.preferences.theme').equals('dark')
+  .where('age')
+  .greaterThan(25)
+  .where('status')
+  .equals('active')
+  .where('roles')
+  .contains('admin')
+  .where('profile.preferences.theme')
+  .equals('dark')
   .sort('name', 'asc')
   .limit(10)
   .offset(20)
@@ -129,9 +133,14 @@ const builder = new AntipatternBuilder({
   verbose: true,
 });
 
-// Build complete database
+// Build complete database with type-safe client
 const result = await builder.build('./data/large-dataset.json');
 console.log(`Built database with ${result.totalRecords} records`);
+
+// Now you can use the generated client:
+// import { db } from './static-db';
+// await db.init();
+// const results = await db.query().where('status').equals('active').exec();
 
 // Validate database structure
 const isValid = await builder.validate('./static-db');
@@ -242,6 +251,7 @@ The builder creates a complete static file database with the following structure
 my-database/
 ├── schema.ts           # Zod validation schemas
 ├── types.ts            # TypeScript type definitions
+├── client.ts           # Pre-configured, type-safe database client
 ├── index.ts            # Exports for easy importing
 ├── metadata.json       # Database metadata and statistics
 ├── split-metadata.json # Data splitting information

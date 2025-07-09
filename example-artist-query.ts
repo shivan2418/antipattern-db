@@ -2,10 +2,13 @@
 
 /**
  * Example: Using Antipattern-DB with Magic: The Gathering Artist Data
- * 
+ *
  * This example demonstrates how to use the generated client to query
  * Magic: The Gathering artist data from the artists-with-cards.json file.
  */
+
+/* eslint-disable no-console */
+/* eslint-disable no-undef */
 
 import { AntipatternDB } from './src/runtime/query-client.js';
 import { RecordSchema } from './generated-test/schema.js';
@@ -28,12 +31,11 @@ async function main() {
     console.log('🔌 Connecting to artist database...');
     const db = new AntipatternDB('./artist-db');
     await db.init();
-    
+
     console.log('✅ Database connected successfully!\n');
 
     // Step 3: Get basic statistics
     console.log('📊 Database Statistics:');
-    const stats = await db.getStats();
     const totalArtists = await db.count();
     const fields = await db.getFields();
     const indexedFields = await db.getIndexedFields();
@@ -48,13 +50,14 @@ async function main() {
     console.log('🎯 Finding prolific artists (>50 cards):');
     const prolificArtists = await db
       .query<Artist>()
-      .where('cardCount').greaterThan(50)
+      .where('cardCount')
+      .greaterThan(50)
       .sort('cardCount', 'desc')
       .limit(5)
       .exec();
 
     console.log(`Found ${prolificArtists.totalCount} prolific artists:`);
-    prolificArtists.records.forEach((artist, index) => {
+    prolificArtists.records.forEach((artist: Artist, index: number) => {
       console.log(`   ${index + 1}. ${artist.name} - ${artist.cardCount} cards`);
     });
     console.log();
@@ -63,12 +66,13 @@ async function main() {
     console.log('🔍 Searching for artists with "John" in their name:');
     const johnArtists = await db
       .query<Artist>()
-      .where('name').contains('John')
+      .where('name')
+      .contains('John')
       .sort('name', 'asc')
       .exec();
 
     console.log(`Found ${johnArtists.totalCount} artists:`);
-    johnArtists.records.slice(0, 3).forEach((artist) => {
+    johnArtists.records.slice(0, 3).forEach(artist => {
       console.log(`   • ${artist.name} (${artist.cardCount} cards)`);
     });
     console.log();
@@ -77,13 +81,14 @@ async function main() {
     console.log('👴 Finding veteran artists (oldest card before 2000):');
     const veteranArtists = await db
       .query<Artist>()
-      .where('oldestCardDate').lessThan('2000-01-01T00:00:00.000Z')
+      .where('oldestCardDate')
+      .lessThan('2000-01-01T00:00:00.000Z')
       .sort('oldestCardDate', 'asc')
       .limit(5)
       .exec();
 
     console.log(`Found ${veteranArtists.totalCount} veteran artists:`);
-    veteranArtists.records.forEach((artist) => {
+    veteranArtists.records.forEach(artist => {
       const oldestDate = new Date(artist.oldestCardDate).getFullYear();
       console.log(`   • ${artist.name} - First card: ${oldestDate}`);
     });
@@ -93,7 +98,8 @@ async function main() {
     console.log('👤 Getting details for a specific artist:');
     const searchResult = await db
       .query<Artist>()
-      .where('cardCount').greaterThan(30)
+      .where('cardCount')
+      .greaterThan(30)
       .limit(1)
       .exec();
 
@@ -102,11 +108,13 @@ async function main() {
       console.log(`   Artist: ${artist.name}`);
       console.log(`   Total Cards: ${artist.cardCount}`);
       console.log(`   First Card: ${new Date(artist.oldestCardDate).getFullYear()}`);
-      
+
       // Show some card examples
       console.log(`   Sample Cards:`);
-      artist.cards.slice(0, 3).forEach((card) => {
-        console.log(`     - ${card.name} (${card.set}) - ${new Date(card.releasedAt).getFullYear()}`);
+      artist.cards.slice(0, 3).forEach(card => {
+        console.log(
+          `     - ${card.name} (${card.set}) - ${new Date(card.releasedAt).getFullYear()}`
+        );
       });
     }
     console.log();
@@ -115,14 +123,16 @@ async function main() {
     console.log('🔍 Complex query - Modern prolific artists:');
     const modernProlific = await db
       .query<Artist>()
-      .where('cardCount').greaterThan(20)
-      .where('oldestCardDate').greaterThan('2010-01-01T00:00:00.000Z')
+      .where('cardCount')
+      .greaterThan(20)
+      .where('oldestCardDate')
+      .greaterThan('2010-01-01T00:00:00.000Z')
       .sort('cardCount', 'desc')
       .limit(3)
       .exec();
 
     console.log(`Artists with 20+ cards who started after 2010:`);
-    modernProlific.records.forEach((artist) => {
+    modernProlific.records.forEach(artist => {
       const startYear = new Date(artist.oldestCardDate).getFullYear();
       console.log(`   • ${artist.name} - ${artist.cardCount} cards (since ${startYear})`);
     });
@@ -133,12 +143,13 @@ async function main() {
     const start = Date.now();
     const performanceTest = await db
       .query<Artist>()
-      .where('cardCount').greaterThanOrEqual(10)
+      .where('cardCount')
+      .greaterThanOrEqual(10)
       .sort('name', 'asc')
       .limit(100)
       .exec();
     const queryTime = Date.now() - start;
-    
+
     console.log(`   Query returned ${performanceTest.records.length} results in ${queryTime}ms`);
     console.log(`   Database execution time: ${performanceTest.executionTime}ms\n`);
 
@@ -170,7 +181,6 @@ async function main() {
     });
 
     console.log(`\n   Total pages available: ${Math.ceil(firstPage.totalCount / pageSize)}`);
-
   } catch (error) {
     if (error instanceof Error && error.message.includes('Database directory not found')) {
       console.log('❌ Database not found!');
@@ -194,14 +204,14 @@ async function main() {
  */
 function analyzeArtistCardDistribution(artist: Artist): void {
   const setTypeCounts: Record<string, number> = {};
-  
+
   artist.cards.forEach(card => {
     setTypeCounts[card.setType] = (setTypeCounts[card.setType] || 0) + 1;
   });
 
   console.log(`\n📊 ${artist.name}'s Card Distribution:`);
   Object.entries(setTypeCounts)
-    .sort(([,a], [,b]) => (b as number) - (a as number))
+    .sort(([, a], [, b]) => (b as number) - (a as number))
     .forEach(([setType, count]) => {
       console.log(`   ${setType}: ${count} cards`);
     });
@@ -215,20 +225,21 @@ async function findSpecialCards(db: AntipatternDB): Promise<void> {
 
   // This would require querying individual card data if cards were indexed separately
   // For now, we'll demonstrate with artist-level queries
-  
+
   const fullArtArtists = await db
     .query<Artist>()
-    .where('cardCount').greaterThan(5) // Artists with multiple cards
+    .where('cardCount')
+    .greaterThan(5) // Artists with multiple cards
     .exec();
 
   console.log(`Analyzed ${fullArtArtists.records.length} artists for special card characteristics`);
-  
+
   // Analyze a sample artist's cards
   if (fullArtArtists.records.length > 0) {
     const sampleArtist = fullArtArtists.records[0];
     const fullArtCards = sampleArtist.cards.filter(card => card.fullArt);
     const borderlessCards = sampleArtist.cards.filter(card => card.borderColor === 'borderless');
-    
+
     console.log(`   ${sampleArtist.name} has:`);
     console.log(`   • ${fullArtCards.length} full-art cards`);
     console.log(`   • ${borderlessCards.length} borderless cards`);
@@ -260,5 +271,5 @@ export {
   findSpecialCards,
   validateArtistData,
   type Artist,
-  type Card
-}; 
+  type Card,
+};

@@ -15,24 +15,7 @@ export interface CardsItem {
   setId: string;
   set: string;
   setName: string;
-  setType:
-    | 'core'
-    | 'memorabilia'
-    | 'expansion'
-    | 'starter'
-    | 'box'
-    | 'masters'
-    | 'draft_innovation'
-    | 'commander'
-    | 'masterpiece'
-    | 'duel_deck'
-    | 'planechase'
-    | 'archenemy'
-    | 'premium_deck'
-    | 'spellbook'
-    | 'from_the_vault'
-    | 'arsenal'
-    | 'token';
+  setType: 'core' | 'memorabilia' | 'expansion' | 'starter' | 'box' | 'masters' | 'draft_innovation' | 'commander' | 'masterpiece' | 'duel_deck' | 'planechase' | 'archenemy' | 'premium_deck' | 'spellbook' | 'from_the_vault' | 'arsenal' | 'token';
   setUri: string;
   setSearchUri: string;
   artist: string;
@@ -49,3 +32,4 @@ export interface GeneratedRecord {
   cardCount: number;
   cards: CardsItem[];
 }
+

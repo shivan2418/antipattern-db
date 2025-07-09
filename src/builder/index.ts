@@ -1,8 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import JSONToZodGenerator from '../jsontozod.js';
-import { IndexGenerator, type IndexOptions, type IndexMetadata } from './index-generator.js';
-import { DataSplitter, type SplitterOptions } from './data-splitter.js';
+import { IndexGenerator, type IndexMetadata } from './index-generator.js';
+import { DataSplitter } from './data-splitter.js';
+import { ClientGenerator } from './client-generator.js';
 
 export interface BuilderOptions {
   outputDir: string;
@@ -89,7 +90,7 @@ export class AntipatternBuilder {
       optionalThreshold: this.options.optionalThreshold,
     });
 
-    const schemaResult = await schemaGenerator.generateFromFile(inputPath, this.options.outputDir);
+    await schemaGenerator.generateFromFile(inputPath, this.options.outputDir);
 
     // Step 3: Split data into files
     const splitter = new DataSplitter({
@@ -110,6 +111,14 @@ export class AntipatternBuilder {
 
     await indexGenerator.generateIndexes(records, this.options.primaryKeyField);
 
+    // Step 5: Generate type-safe database client
+    const clientGenerator = new ClientGenerator({
+      outputDir: this.options.outputDir,
+      primaryKeyField: this.options.primaryKeyField,
+    });
+
+    await clientGenerator.generateClient();
+
     // Calculate total output size
     const outputSize = this.calculateOutputSize(this.options.outputDir);
     const buildTime = Date.now() - startTime;
@@ -119,7 +128,7 @@ export class AntipatternBuilder {
       records: records.length,
       dataFiles: splitResult.totalFiles,
       indexFiles: this.countIndexFiles(),
-      schemas: 3, // schema.ts, types.ts, index.ts
+      schemas: 4, // schema.ts, types.ts, index.ts, client.ts
       totalSizeMB: Math.round((outputSize / 1024 / 1024) * 100) / 100,
     };
 
@@ -155,6 +164,7 @@ export class AntipatternBuilder {
         'schema.ts',
         'types.ts',
         'index.ts',
+        'client.ts',
         'metadata.json',
         'split-metadata.json',
       ];

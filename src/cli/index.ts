@@ -3,7 +3,6 @@
 import { program } from 'commander';
 import { AntipatternBuilder } from '../builder/index.js';
 import * as fs from 'fs';
-import * as path from 'path';
 
 program
   .name('antipattern-db')
@@ -62,9 +61,9 @@ program
       console.log(`💾 Size: ${result.summary.totalSizeMB} MB`);
 
       console.log(`\n🎯 Usage:`);
-      console.log(`   import { AntipatternDB } from 'antipattern-db';`);
-      console.log(`   const db = new AntipatternDB('${options.output}');`);
-      console.log(`   const results = await db.query().where('field', 'value').exec();`);
+      console.log(`   import { db } from '${options.output}';`);
+      console.log(`   await db.init();`);
+      console.log(`   const results = await db.query().where('field').equals('value').exec();`);
     } catch (error) {
       console.error(`❌ Build failed:`, error);
       process.exit(1);

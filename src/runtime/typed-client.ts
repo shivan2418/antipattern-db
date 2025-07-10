@@ -1,4 +1,4 @@
-import { AntipatternDB, QueryBuilder } from './query-client.js';
+import { AntipatternDB } from './query-client.js';
 import { TypeSafeQueryBuilder } from './typed-query-builder.js';
 import { z } from 'zod';
 
@@ -46,19 +46,6 @@ export class TypedDatabaseClient<
       await this.ensureInitialized();
       return this.client._executeQuery<TRecord>(filters, options);
     });
-  }
-
-  /**
-   * Create a legacy query builder for backward compatibility
-   * @deprecated Use query() for type safety
-   */
-  queryLegacy(): QueryBuilder<TRecord> {
-    // Note: Legacy query builder still requires manual initialization
-    // This is intentional to encourage migration to the new API
-    if (!this.initialized) {
-      throw new Error('Database not initialized. Call init() first or use query() instead.');
-    }
-    return this.client.query<TRecord>();
   }
 
   /**

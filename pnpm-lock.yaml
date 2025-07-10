@@ -10,6 +10,9 @@ importers:
       commander:
         specifier: ^12.1.0
         version: 12.1.0
+      json-to-zod:
+        specifier: ^1.1.2
+        version: 1.1.2
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -1065,6 +1068,13 @@ packages:
         integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==,
       }
 
+  json-to-zod@1.1.2:
+    resolution:
+      {
+        integrity: sha512-6YDvnY8oOS5v1H1CWUvfNJkCI3SGbmCwWMytndPHzwyrr1K9ayNXL4rvOSf7WCy3c3Pxu2brvt4idZCkKh9gfQ==,
+      }
+    hasBin: true
+
   keyv@4.5.4:
     resolution:
       {
@@ -1250,6 +1260,14 @@ packages:
         integrity: sha512-GbK2cP9nraSSUF9N2XwUwqfzlAFlMNYYl+ShE/V+H8a9uNl/oUqB1w2EL54Jh0OlyRSd8RfWYJ3coVS4TROP2w==,
       }
     engines: { node: '>=6.0.0' }
+
+  prettier@2.8.8:
+    resolution:
+      {
+        integrity: sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==,
+      }
+    engines: { node: '>=10.13.0' }
+    hasBin: true
 
   prettier@3.6.2:
     resolution:
@@ -2049,6 +2067,10 @@ snapshots:
 
   json-stable-stringify-without-jsonify@1.0.1: {}
 
+  json-to-zod@1.1.2:
+    dependencies:
+      prettier: 2.8.8
+
   keyv@4.5.4:
     dependencies:
       json-buffer: 3.0.1
@@ -2159,6 +2181,8 @@ snapshots:
   prettier-linter-helpers@1.0.0:
     dependencies:
       fast-diff: 1.3.0
+
+  prettier@2.8.8: {}
 
   prettier@3.6.2: {}
 

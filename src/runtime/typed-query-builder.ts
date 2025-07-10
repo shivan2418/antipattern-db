@@ -94,7 +94,7 @@ export interface EnhancedQueryResult<T> extends QueryResult<T> {
 /**
  * Type-safe field query builder that constrains field names to valid paths
  */
-export class TypeSafeFieldQueryBuilder<T, F extends string> {
+export class TypeSafeFieldQueryBuilder<T extends object, F extends string> {
   constructor(
     private field: F,
     private parentBuilder: TypeSafeQueryBuilder<T>
@@ -150,81 +150,9 @@ export class TypeSafeFieldQueryBuilder<T, F extends string> {
 }
 
 /**
- * Array field query builder for filtering nested arrays
- */
-export class ArrayFieldQueryBuilder<T, K extends ArrayFields<T> & string> {
-  constructor(
-    private field: K,
-    private parentBuilder: TypeSafeQueryBuilder<T>
-  ) {}
-
-  /**
-   * Filter array elements using a custom predicate function
-   */
-  where(predicate: (item: ArrayElementType<T[K]>) => boolean): TypeSafeQueryBuilder<T> {
-    return this.parentBuilder.addArrayFilter(this.field, predicate);
-  }
-
-  /**
-   * Filter array elements by a specific field value
-   */
-  whereField<F extends keyof ArrayElementType<T[K]>>(
-    field: F,
-    value: ArrayElementType<T[K]>[F]
-  ): TypeSafeQueryBuilder<T> {
-    return this.where(item => item[field] === value);
-  }
-
-  /**
-   * Filter array elements where a field contains a value
-   */
-  whereFieldContains<F extends keyof ArrayElementType<T[K]>>(
-    field: F,
-    value: string
-  ): TypeSafeQueryBuilder<T> {
-    return this.where(item => {
-      const fieldValue = item[field];
-      return (
-        typeof fieldValue === 'string' && fieldValue.toLowerCase().includes(value.toLowerCase())
-      );
-    });
-  }
-
-  /**
-   * Filter array elements where a field is in a list of values
-   */
-  whereFieldIn<F extends keyof ArrayElementType<T[K]>>(
-    field: F,
-    values: ArrayElementType<T[K]>[F][]
-  ): TypeSafeQueryBuilder<T> {
-    return this.where(item => values.includes(item[field]));
-  }
-
-  /**
-   * Filter array elements where a field is greater than a value
-   */
-  whereFieldGreaterThan<F extends keyof ArrayElementType<T[K]>>(
-    field: F,
-    value: ArrayElementType<T[K]>[F]
-  ): TypeSafeQueryBuilder<T> {
-    return this.where(item => item[field] > value);
-  }
-
-  /**
-   * Filter array elements where a field is less than a value
-   */
-  whereFieldLessThan<F extends keyof ArrayElementType<T[K]>>(
-    field: F,
-    value: ArrayElementType<T[K]>[F]
-  ): TypeSafeQueryBuilder<T> {
-    return this.where(item => item[field] < value);
-  }
-}
-
-/**
  * Type-safe query builder that constrains field names to valid record keys
  */
-export class TypeSafeQueryBuilder<T> {
+export class TypeSafeQueryBuilder<T extends object> {
   private filters: QueryFilter[] = [];
   private sortOptions: QuerySort[] = [];
   private limitValue?: number;
@@ -271,24 +199,6 @@ export class TypeSafeQueryBuilder<T> {
     value: PathValue<T, F>
   ): TypeSafeQueryBuilder<T> {
     return this.addFilter(field, QueryOperator.EQUALS, value);
-  }
-
-  /**
-   * Filter array fields within the query results
-   * This allows you to first find records, then filter their nested arrays
-   *
-   * @example
-   * ```typescript
-   * // Find artist "John Avon" and only show their cards from the "BRO" set
-   * const result = await db.query()
-   *   .where('name').equals('John Avon')
-   *   .filterArrayField('cards')
-   *   .whereField('set', 'BRO')
-   *   .exec();
-   * ```
-   */
-  filterArrayField<K extends ArrayFields<T> & string>(field: K): ArrayFieldQueryBuilder<T, K> {
-    return new ArrayFieldQueryBuilder<T, K>(field, this);
   }
 
   /**

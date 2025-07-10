@@ -106,15 +106,15 @@ const activeUsers = await db.query().where('status').equals('active').exec();
 // ✅ Advanced type-safe queries with multiple filters
 const results = await db
   .query()
-  .where('age')                      // ✅ Only allows fields that exist in your data
+  .where('age') // ✅ Only allows fields that exist in your data
   .greaterThan(25)
-  .where('status')                   // ✅ IntelliSense autocomplete for field names
+  .where('status') // ✅ IntelliSense autocomplete for field names
   .equals('active')
-  .where('roles')                    // ✅ Array field support
+  .where('roles') // ✅ Array field support
   .contains('admin')
   .where('profile.preferences.theme') // ✅ Nested field access (up to 3 levels)
   .equals('dark')
-  .sort('name', 'asc')               // ✅ Sort field names are also type-checked
+  .sort('name', 'asc') // ✅ Sort field names are also type-checked
   .limit(10)
   .offset(20)
   .exec();
@@ -572,6 +572,97 @@ pnpm run test:integration # Full end-to-end integration test
 - ✅ File structure validation
 - ✅ Real-world dataset processing (1,866 records)
 
+## Development
+
+### Quick Start
+
+**1. Link the package globally:**
+
+```bash
+pnpm link --global
+```
+
+**2. Link it in the example app:**
+
+```bash
+cd example-app
+pnpm link --global antipattern-db
+pnpm install
+```
+
+**3. Start development (2 terminals):**
+
+```bash
+# Terminal 1: Watch-build the package
+pnpm dev
+
+# Terminal 2: Run example app
+cd example-app && pnpm dev
+```
+
+That's it! The example app will use your local development version and auto-reload when you make changes.
+
+### Development Commands
+
+```bash
+# Build the package once
+pnpm build
+
+# Watch-build the main package
+pnpm dev
+
+# Run tests
+pnpm test
+```
+
+### Development Workflow
+
+1. **Make changes** to source files in `src/`
+2. **TypeScript automatically rebuilds** the package (via `tsc --watch`)
+3. **Example app automatically reloads** with your changes (via Vite HMR)
+4. **Test your changes** in the example app at `http://localhost:5173`
+
+### Project Structure
+
+```
+antipattern-db/
+├── src/                    # Main package source code
+│   ├── builder/           # Database building logic
+│   ├── runtime/           # Query client runtime
+│   ├── cli/              # Command-line interface
+│   └── types/            # TypeScript type definitions
+├── example-app/           # React example application
+│   ├── src/              # Example app source
+│   └── package.json      # Uses "file:.." to link to main package
+├── tests/                # Test suites
+├── dist/                 # Built package output (generated)
+└── package.json          # Main package configuration
+```
+
+### Testing Changes
+
+The `example-app/` demonstrates real usage of the package. When developing:
+
+1. Make changes to the main package in `src/`
+2. The package rebuilds automatically (via `tsc --watch`)
+3. The example app automatically reloads with your changes
+4. Add new features/examples to the example app as needed
+
+### Adding New Features
+
+1. **Add source code** in the appropriate `src/` subdirectory
+2. **Export** new functionality from `src/index.ts`
+3. **Add tests** in the `tests/` directory
+4. **Update examples** in `example-app/` to demonstrate the feature
+5. **Run the full test suite**: `pnpm test`
+
+### Debugging
+
+- **Package build issues**: Check TypeScript errors with `pnpm build`
+- **Runtime issues**: Use browser DevTools in the example app
+- **Type issues**: Check with `pnpm type-check`
+- **Lint issues**: Run `pnpm lint` or `pnpm lint:fix`
+
 ## License
 
 MIT
@@ -579,3 +670,5 @@ MIT
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+For development setup, see the [Development](#development) section above.

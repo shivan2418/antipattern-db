@@ -7,9 +7,6 @@ settings:
 importers:
   .:
     dependencies:
-      antipattern-db:
-        specifier: file:..
-        version: file:..
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -941,10 +938,6 @@ packages:
       }
     engines: { node: '>=8' }
 
-  antipattern-db@file:..:
-    resolution: { directory: .., type: directory }
-    hasBin: true
-
   argparse@2.0.1:
     resolution:
       {
@@ -1016,13 +1009,6 @@ packages:
       {
         integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==,
       }
-
-  commander@12.1.0:
-    resolution:
-      {
-        integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==,
-      }
-    engines: { node: '>=18' }
 
   concat-map@0.0.1:
     resolution:
@@ -1835,12 +1821,6 @@ packages:
       }
     engines: { node: '>=10' }
 
-  zod@3.25.76:
-    resolution:
-      {
-        integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==,
-      }
-
 snapshots:
   '@ampproject/remapping@2.3.0':
     dependencies:
@@ -2342,11 +2322,6 @@ snapshots:
     dependencies:
       color-convert: 2.0.1
 
-  antipattern-db@file:..:
-    dependencies:
-      commander: 12.1.0
-      zod: 3.25.76
-
   argparse@2.0.1: {}
 
   balanced-match@1.0.2: {}
@@ -2385,8 +2360,6 @@ snapshots:
       color-name: 1.1.4
 
   color-name@1.1.4: {}
-
-  commander@12.1.0: {}
 
   concat-map@0.0.1: {}
 
@@ -2825,5 +2798,3 @@ snapshots:
   yallist@3.1.1: {}
 
   yocto-queue@0.1.0: {}
-
-  zod@3.25.76: {}

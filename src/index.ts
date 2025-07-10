@@ -12,7 +12,6 @@ export { AntipatternDB, QueryBuilder, QueryOperator } from './runtime/query-clie
 export { TypedDatabaseClient } from './runtime/typed-client.js';
 export {
   TypeSafeQueryBuilder,
-  ArrayFieldQueryBuilder,
   FieldPaths,
   ArrayElementType,
   ArrayFields,

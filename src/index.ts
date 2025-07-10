@@ -10,7 +10,13 @@ export { default as JSONToZodGenerator } from './jsontozod.js';
 // Runtime query functionality
 export { AntipatternDB, QueryBuilder, QueryOperator } from './runtime/query-client.js';
 export { TypedDatabaseClient } from './runtime/typed-client.js';
-export { TypeSafeQueryBuilder, FieldPaths } from './runtime/typed-query-builder.js';
+export {
+  TypeSafeQueryBuilder,
+  ArrayFieldQueryBuilder,
+  FieldPaths,
+  ArrayElementType,
+  ArrayFields,
+} from './runtime/typed-query-builder.js';
 
 // Browser-compatible runtime
 export {
@@ -30,6 +36,9 @@ export type {
   QueryOptions,
   DatabaseRecord,
 } from './runtime/query-client.js';
+
+// Array filtering types
+export type { ArrayFieldFilter, EnhancedQueryResult } from './runtime/typed-query-builder.js';
 
 // Core types
 export type {

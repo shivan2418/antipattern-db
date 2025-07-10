@@ -1,46 +1,54 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { debounce } from 'lodash';
 import { db } from './artist-db/client';
 import type { GeneratedRecord } from './artist-db/types';
 import './App.css';
 
 function App() {
-  const [artists, setArtists] = useState<GeneratedRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredArtists, setFilteredArtists] = useState<GeneratedRecord[]>([]);
 
-  useEffect(() => {
-    const loadArtists = async () => {
-      try {
-        // Get the first 10 artists for demo
-        const records = await db.getAllRecords(10);
-
-        setArtists(records || []);
-        setFilteredArtists(records || []);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error loading artists:', error);
-        setLoading(false);
+  // Debounced search function
+  const performSearch = useCallback(
+    debounce(async (term: string) => {
+      if (!term.trim()) {
+        // If search term is empty, clear results
+        setFilteredArtists([]);
+        setSearching(false);
+        return;
       }
-    };
 
-    loadArtists();
-  }, []);
+      setSearching(true);
+      try {
+        // Use efficient query with index-based search instead of loading all records
+        const result = await db.query().where('name').contains(term).exec();
 
+        setFilteredArtists(result.records || []);
+      } catch (error) {
+        console.error('Error searching artists:', error);
+        setFilteredArtists([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300), // 300ms debounce delay
+    []
+  );
+
+  // Handle search input changes
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    performSearch(value);
+  };
+
+  // Cleanup debounced function on unmount
   useEffect(() => {
-    if (searchTerm) {
-      const filtered = artists.filter(artist =>
-        artist.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredArtists(filtered);
-    } else {
-      setFilteredArtists(artists);
-    }
-  }, [searchTerm, artists]);
-
-  if (loading) {
-    return <div className="loading">Loading artists...</div>;
-  }
+    return () => {
+      performSearch.cancel();
+    };
+  }, [performSearch]);
 
   return (
     <div className="App">
@@ -53,10 +61,15 @@ function App() {
             type="text"
             placeholder="Search artists..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange}
             className="search-input"
           />
+          {searching && <span className="search-indicator">Searching...</span>}
         </div>
+
+        {!searchTerm && filteredArtists.length === 0 && !searching && (
+          <div className="search-prompt">Start typing to search for artists...</div>
+        )}
 
         <div className="artists-grid">
           {filteredArtists.map(artist => (
@@ -79,6 +92,10 @@ function App() {
             </div>
           ))}
         </div>
+
+        {filteredArtists.length === 0 && searchTerm && !searching && (
+          <div className="no-results">No artists found matching "{searchTerm}"</div>
+        )}
       </header>
     </div>
   );

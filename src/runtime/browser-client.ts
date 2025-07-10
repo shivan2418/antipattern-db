@@ -295,20 +295,117 @@ export class BrowserAntipatternDB {
 
     // Try to use indexes for efficient filtering
     for (const filter of filters) {
-      if (filter.operator === QueryOperator.EQUALS) {
-        const indexData = await this.loadIndex(filter.field);
-        if (indexData) {
-          const recordIds = indexData[String(filter.value)] || [];
-          const recordIdSet = new Set(recordIds);
+      let filterRecordIds: Set<string> | null = null;
 
-          if (candidateRecordIds === null) {
-            candidateRecordIds = recordIdSet;
-          } else {
-            // Intersection with previous results
-            candidateRecordIds = new Set(
-              [...candidateRecordIds].filter((id: string) => recordIdSet.has(id))
-            );
+      const indexData = await this.loadIndex(filter.field);
+      if (indexData) {
+        const resultIds = new Set<string>();
+
+        if (filter.operator === QueryOperator.EQUALS) {
+          // Handle simple key-value lookup for older index format
+          const recordIds = indexData[String(filter.value)] || [];
+          if (Array.isArray(recordIds)) {
+            recordIds.forEach(id => resultIds.add(id));
           }
+          filterRecordIds = resultIds;
+        } else if ((indexData as any).entries) {
+          // Handle all other operators using the entries array
+          const entries = (indexData as any).entries;
+          for (const entry of entries) {
+            let matches = false;
+
+            switch (filter.operator) {
+              case QueryOperator.NOT_EQUALS:
+                matches = entry.value !== filter.value;
+                break;
+              case QueryOperator.GREATER_THAN:
+                matches =
+                  typeof entry.value === 'number' && typeof filter.value === 'number'
+                    ? entry.value > filter.value
+                    : false;
+                break;
+              case QueryOperator.GREATER_THAN_OR_EQUAL:
+                matches =
+                  typeof entry.value === 'number' && typeof filter.value === 'number'
+                    ? entry.value >= filter.value
+                    : false;
+                break;
+              case QueryOperator.LESS_THAN:
+                matches =
+                  typeof entry.value === 'number' && typeof filter.value === 'number'
+                    ? entry.value < filter.value
+                    : false;
+                break;
+              case QueryOperator.LESS_THAN_OR_EQUAL:
+                matches =
+                  typeof entry.value === 'number' && typeof filter.value === 'number'
+                    ? entry.value <= filter.value
+                    : false;
+                break;
+              case QueryOperator.IN:
+                matches = Array.isArray(filter.value) && filter.value.includes(entry.value);
+                break;
+              case QueryOperator.NOT_IN:
+                matches = Array.isArray(filter.value) && !filter.value.includes(entry.value);
+                break;
+              case QueryOperator.CONTAINS:
+                matches =
+                  typeof entry.value === 'string' &&
+                  typeof filter.value === 'string' &&
+                  entry.value.toLowerCase().includes(filter.value.toLowerCase());
+                break;
+              case QueryOperator.NOT_CONTAINS:
+                matches =
+                  typeof entry.value === 'string' &&
+                  typeof filter.value === 'string' &&
+                  !entry.value.toLowerCase().includes(filter.value.toLowerCase());
+                break;
+              case QueryOperator.STARTS_WITH:
+                matches =
+                  typeof entry.value === 'string' &&
+                  typeof filter.value === 'string' &&
+                  entry.value.toLowerCase().startsWith(filter.value.toLowerCase());
+                break;
+              case QueryOperator.ENDS_WITH:
+                matches =
+                  typeof entry.value === 'string' &&
+                  typeof filter.value === 'string' &&
+                  entry.value.toLowerCase().endsWith(filter.value.toLowerCase());
+                break;
+              case QueryOperator.REGEX:
+                if (typeof entry.value === 'string' && typeof filter.value === 'string') {
+                  try {
+                    const regex = new RegExp(filter.value, 'i');
+                    matches = regex.test(entry.value);
+                  } catch {
+                    matches = false;
+                  }
+                }
+                break;
+              case QueryOperator.EXISTS:
+                matches = entry.value !== undefined && entry.value !== null;
+                break;
+              case QueryOperator.NOT_EXISTS:
+                matches = entry.value === undefined || entry.value === null;
+                break;
+            }
+
+            if (matches) {
+              entry.recordIds.forEach((id: string) => resultIds.add(id));
+            }
+          }
+          filterRecordIds = resultIds;
+        }
+      }
+
+      if (filterRecordIds) {
+        if (candidateRecordIds === null) {
+          candidateRecordIds = filterRecordIds;
+        } else {
+          // Intersection with previous results
+          candidateRecordIds = new Set(
+            [...candidateRecordIds].filter((id: string) => filterRecordIds!.has(id))
+          );
         }
       }
     }
@@ -356,6 +453,7 @@ export class BrowserAntipatternDB {
   }
 
   private matchesAllFilters(record: DatabaseRecord, filters: QueryFilter[]): boolean {
+    if (!filters.length) return true;
     return filters.every(filter => this.matchesFilter(record, filter));
   }
 
